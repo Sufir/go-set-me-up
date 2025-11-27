@@ -37,6 +37,7 @@ func (valueUnmarshaler ValueUnmarshaler) UnmarshalText(text []byte) error {
 type BadPointerUnmarshaler struct{}
 
 func (badPointerUnmarshaler *BadPointerUnmarshaler) UnmarshalText(text []byte) error {
+	_ = text
 	return errors.New("failed to unmarshal")
 }
 

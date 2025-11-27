@@ -4,9 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Sufir/go-set-me-up/pkg"
 )
 
 func TestConvertToEnvironmentVariableName(t *testing.T) {
@@ -57,58 +58,56 @@ func TestSplitIntoTokens(t *testing.T) {
 func TestShouldSetField(t *testing.T) {
 	var x int
 	vx := reflect.ValueOf(&x).Elem()
-	assert.True(t, (EnvSource{}).shouldSetField(vx, true, pkg.ModeOverride, ""))
-	assert.True(t, (EnvSource{}).shouldSetField(vx, false, pkg.ModeOverride, "10"))
-	assert.False(t, (EnvSource{}).shouldSetField(vx, false, pkg.ModeOverride, ""))
+	assert.True(t, (Source{}).shouldSetField(vx, true, pkg.ModeOverride, ""))
+	assert.True(t, (Source{}).shouldSetField(vx, false, pkg.ModeOverride, "10"))
+	assert.False(t, (Source{}).shouldSetField(vx, false, pkg.ModeOverride, ""))
 	x = 5
 	vx = reflect.ValueOf(&x).Elem()
-	assert.False(t, (EnvSource{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
+	assert.False(t, (Source{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
 	x = 0
 	vx = reflect.ValueOf(&x).Elem()
-	assert.True(t, (EnvSource{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
-	assert.True(t, (EnvSource{}).shouldSetField(vx, false, pkg.ModeFillMissing, "7"))
+	assert.True(t, (Source{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
+	assert.True(t, (Source{}).shouldSetField(vx, false, pkg.ModeFillMissing, "7"))
 }
 
 func TestSetFieldValue(t *testing.T) {
-	source := NewEnvSource("app", ",")
+	source := NewSource("app", ",")
 	type Holder struct {
-		IntSlice          []int  `envDelim:":"`
-		IntArray          [3]int `envDelim:","`
+		IntSlice          []int `envDelim:":"`
 		ByteSlice         []byte
+		IntArray          [3]int `envDelim:","`
+		IntValue          int
 		BytesArray        [5]byte `envDelim:","`
 		BytesArrayNoDelim [5]byte `envDelim:","`
-		IntValue          int
 	}
 	var h Holder
 	hv := reflect.ValueOf(&h).Elem()
-	ht := hv.Type()
 
 	field := hv.FieldByName("IntSlice")
-	fi, _ := ht.FieldByName("IntSlice")
-	require.Error(t, source.setFieldValue(field, "1:2:3", fi, ""))
+
+	require.Error(t, source.setFieldValue(field, "1:2:3"))
 
 	field = hv.FieldByName("IntArray")
-	fi, _ = ht.FieldByName("IntArray")
-	require.Error(t, source.setFieldValue(field, "10,20,30,40", fi, ""))
+
+	require.Error(t, source.setFieldValue(field, "10,20,30,40"))
 
 	field = hv.FieldByName("ByteSlice")
-	fi, _ = ht.FieldByName("ByteSlice")
-	require.NoError(t, source.setFieldValue(field, " a b ", fi, ""))
+
+	require.NoError(t, source.setFieldValue(field, " a b "))
 	assert.Equal(t, []byte(" a b "), h.ByteSlice)
 
 	field = hv.FieldByName("BytesArray")
-	fi, _ = ht.FieldByName("BytesArray")
-	require.NoError(t, source.setFieldValue(field, "abcde", fi, ""))
+
+	require.NoError(t, source.setFieldValue(field, "abcde"))
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 'd', 'e'}, h.BytesArray)
 
 	field = hv.FieldByName("BytesArrayNoDelim")
-	fi, _ = ht.FieldByName("BytesArrayNoDelim")
-	require.NoError(t, source.setFieldValue(field, "abc", fi, ""))
+
+	require.NoError(t, source.setFieldValue(field, "abc"))
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, h.BytesArrayNoDelim)
 
 	field = hv.FieldByName("IntValue")
-	fi, _ = ht.FieldByName("IntValue")
-	require.NoError(t, source.setFieldValue(field, "42", fi, ""))
+	require.NoError(t, source.setFieldValue(field, "42"))
 	assert.Equal(t, 42, h.IntValue)
 }
 
@@ -121,7 +120,7 @@ func TestGetEnv_ReadsSetVariables(t *testing.T) {
 }
 
 func TestLoadStruct_SetsOnlyTaggedFields(t *testing.T) {
-	source := NewEnvSource("APP", ",")
+	source := NewSource("APP", ",")
 	type Sub struct {
 		Value int `env:"VALUE"`
 	}

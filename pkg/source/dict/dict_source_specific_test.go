@@ -3,9 +3,10 @@ package dict
 import (
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Sufir/go-set-me-up/pkg"
 )
 
 func intPointer(v int) *int {
@@ -19,19 +20,19 @@ type KeyResolutionConfig struct {
 
 func TestDictSource_KeyResolution_Table(t *testing.T) {
 	testCases := []struct {
-		name     string
 		input    map[string]any
+		name     string
 		expected int
 	}{
-		{"FieldNamePriority", map[string]any{"SomeVar": 1, "some_var": 9, "SOME_VAR": 9}, 1},
-		{"SnakeLowerUsed", map[string]any{"some_var": 2}, 2},
-		{"SnakeUpperUsed", map[string]any{"SOME_VAR": 3}, 3},
-		{"NoKeyNoChange", map[string]any{"OTHER": 7}, 0},
+		{name: "FieldNamePriority", input: map[string]any{"SomeVar": 1, "some_var": 9, "SOME_VAR": 9}, expected: 1},
+		{name: "SnakeLowerUsed", input: map[string]any{"some_var": 2}, expected: 2},
+		{name: "SnakeUpperUsed", input: map[string]any{"SOME_VAR": 3}, expected: 3},
+		{name: "NoKeyNoChange", input: map[string]any{"OTHER": 7}, expected: 0},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			source := NewDictSource(tc.input)
+			source := NewSource(tc.input)
 			cfg := KeyResolutionConfig{}
 			err := source.Load(&cfg, pkg.ModeOverride)
 			require.NoError(t, err)
@@ -46,7 +47,7 @@ type CollectionsConfig struct {
 }
 
 func TestDictSource_Collections_AssignWhole_NoElementCast(t *testing.T) {
-	sourceGood := NewDictSource(map[string]any{
+	sourceGood := NewSource(map[string]any{
 		"Ints":  []int{1, 2, 3},
 		"Bytes": "xyz",
 	})
@@ -56,7 +57,7 @@ func TestDictSource_Collections_AssignWhole_NoElementCast(t *testing.T) {
 	assert.Equal(t, []int{1, 2, 3}, cfgGood.Ints)
 	assert.Equal(t, [3]byte{'x', 'y', 'z'}, cfgGood.Bytes)
 
-	sourceBad := NewDictSource(map[string]any{
+	sourceBad := NewSource(map[string]any{
 		"Ints": "1,2,3",
 	})
 	cfgBad := CollectionsConfig{}
@@ -71,7 +72,7 @@ func TestDictSource_ConvertibleNumericTypes(t *testing.T) {
 		U uint64
 		F float64
 	}
-	source := NewDictSource(map[string]any{
+	source := NewSource(map[string]any{
 		"I": float64(3.5),
 		"U": int64(7),
 		"F": int32(2),
@@ -85,14 +86,14 @@ func TestDictSource_ConvertibleNumericTypes(t *testing.T) {
 }
 
 type NilAssignConfig struct {
-	SP []int
 	MP map[string]int
-	VP int
 	PP *int
+	SP []int
+	VP int
 }
 
 func TestDictSource_NilAssignments(t *testing.T) {
-	sourceOverride := NewDictSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil})
+	sourceOverride := NewSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil})
 	cfgOverride := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, VP: 5, PP: intPointer(1)}
 	err := sourceOverride.Load(&cfgOverride, pkg.ModeOverride)
 	require.Error(t, err)
@@ -100,7 +101,7 @@ func TestDictSource_NilAssignments(t *testing.T) {
 	assert.Nil(t, cfgOverride.MP)
 	assert.Nil(t, cfgOverride.PP)
 
-	sourceFill := NewDictSource(map[string]any{"SP": nil, "MP": nil, "PP": nil})
+	sourceFill := NewSource(map[string]any{"SP": nil, "MP": nil, "PP": nil})
 	cfgFill := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, PP: intPointer(2)}
 	err = sourceFill.Load(&cfgFill, pkg.ModeFillMissing)
 	require.NoError(t, err)
@@ -110,7 +111,7 @@ func TestDictSource_NilAssignments(t *testing.T) {
 }
 
 func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
-	source := NewDictSource(map[string]any{"X": nil})
+	source := NewSource(map[string]any{"X": nil})
 	type Simple struct{ X int }
 	cfg := Simple{}
 	err := source.Load(&cfg, pkg.ModeOverride)
@@ -119,7 +120,7 @@ func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
 }
 
 func TestDictSource_MapToStruct_NonStructField_Ignored(t *testing.T) {
-	source := NewDictSource(map[string]any{"X": map[string]any{"A": 1}})
+	source := NewSource(map[string]any{"X": map[string]any{"A": 1}})
 	type Simple struct{ X int }
 	cfg := Simple{}
 	err := source.Load(&cfg, pkg.ModeOverride)
@@ -128,13 +129,13 @@ func TestDictSource_MapToStruct_NonStructField_Ignored(t *testing.T) {
 }
 
 type PointerMixConfig struct {
-	IntValue   int
 	IntPointer *int
+	IntValue   int
 }
 
 func TestDictSource_PointerAutoWrapUnwrap(t *testing.T) {
 	p := intPointer(77)
-	source := NewDictSource(map[string]any{
+	source := NewSource(map[string]any{
 		"IntValue":   p,
 		"IntPointer": 88,
 	})

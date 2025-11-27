@@ -9,20 +9,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type UintPositiveCase struct {
+	targetType reflect.Type
+	expected   any
+	name       string
+	inputValue string
+}
+
+type UintNegativeCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+}
+
 func TestUintOptionTypeCast_Positive(t *testing.T) {
 	optionType := UintOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-		expected   any
-	}{
-		{"Uint", "42", reflect.TypeOf(uint(0)), uint(42)},
-		{"Uint8", "255", reflect.TypeOf(uint8(0)), uint8(255)},
-		{"Uint16", "65535", reflect.TypeOf(uint16(0)), uint16(65535)},
-		{"Uint32", "4294967295", reflect.TypeOf(uint32(0)), uint32(4294967295)},
-		{"Uint64", "18446744073709551615", reflect.TypeOf(uint64(0)), uint64(18446744073709551615)},
-		{"Uintptr", "12345", reflect.TypeOf(uintptr(0)), uintptr(12345)},
+	testCases := []UintPositiveCase{
+		{name: "Uint", inputValue: "42", targetType: reflect.TypeOf(uint(0)), expected: uint(42)},
+		{name: "Uint8", inputValue: "255", targetType: reflect.TypeOf(uint8(0)), expected: uint8(255)},
+		{name: "Uint16", inputValue: "65535", targetType: reflect.TypeOf(uint16(0)), expected: uint16(65535)},
+		{name: "Uint32", inputValue: "4294967295", targetType: reflect.TypeOf(uint32(0)), expected: uint32(4294967295)},
+		{name: "Uint64", inputValue: "18446744073709551615", targetType: reflect.TypeOf(uint64(0)), expected: uint64(18446744073709551615)},
+		{name: "Uintptr", inputValue: "12345", targetType: reflect.TypeOf(uintptr(0)), expected: uintptr(12345)},
 	}
 
 	for _, testCase := range testCases {
@@ -37,13 +45,9 @@ func TestUintOptionTypeCast_Positive(t *testing.T) {
 
 func TestUintOptionTypeCast_Negative(t *testing.T) {
 	optionType := UintOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-	}{
-		{"NegativeNumber", "-1", reflect.TypeOf(uint(0))},
-		{"InvalidNumber", "x", reflect.TypeOf(uint64(0))},
+	testCases := []UintNegativeCase{
+		{name: "NegativeNumber", inputValue: "-1", targetType: reflect.TypeOf(uint(0))},
+		{name: "InvalidNumber", inputValue: "x", targetType: reflect.TypeOf(uint64(0))},
 	}
 
 	for _, testCase := range testCases {

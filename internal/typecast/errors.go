@@ -17,8 +17,8 @@ func (e ErrUnsupportedType) Error() string {
 
 type ErrParseFailed struct {
 	Type  reflect.Type
-	Value string
 	Cause error
+	Value string
 }
 
 func (e ErrParseFailed) Error() string {

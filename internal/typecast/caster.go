@@ -7,8 +7,8 @@ import (
 
 type Caster struct {
 	byType  map[reflect.Type]OptionType
-	mu      sync.RWMutex
 	options []OptionType
+	mu      sync.RWMutex
 }
 
 type OptionType interface {

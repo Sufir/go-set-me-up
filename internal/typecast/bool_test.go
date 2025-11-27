@@ -9,17 +9,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type BoolPositiveCase struct {
+	name       string
+	inputValue string
+	expected   bool
+}
+
 func TestBoolOptionTypeCast_Positive(t *testing.T) {
 	optionType := BoolOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		expected   bool
-	}{
-		{"TrueLowercase", "true", true},
-		{"FalseWithSpaces", "  false  ", false},
-		{"NumericTrue", "1", true},
-		{"NumericFalse", "0", false},
+	testCases := []BoolPositiveCase{
+		{name: "TrueLowercase", inputValue: "true", expected: true},
+		{name: "FalseWithSpaces", inputValue: "  false  ", expected: false},
+		{name: "NumericTrue", inputValue: "1", expected: true},
+		{name: "NumericFalse", inputValue: "0", expected: false},
 	}
 
 	for _, testCase := range testCases {
@@ -33,12 +35,13 @@ func TestBoolOptionTypeCast_Positive(t *testing.T) {
 
 func TestBoolOptionTypeCast_Negative(t *testing.T) {
 	optionType := BoolOptionType{}
-	testCases := []struct {
+	type BoolNegativeCase struct {
 		name       string
 		inputValue string
-	}{
-		{"InvalidWord", "yes"},
-		{"Garbage", "abc"},
+	}
+	testCases := []BoolNegativeCase{
+		{name: "InvalidWord", inputValue: "yes"},
+		{name: "Garbage", inputValue: "abc"},
 	}
 
 	for _, testCase := range testCases {

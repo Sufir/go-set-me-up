@@ -26,10 +26,10 @@ func buildDictMapFromInput(input []testcommon.DataEntry) map[string]any {
 	return root
 }
 
-func executeDictScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
+func executeDictScenario(_ *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
 	inputMap := buildDictMapFromInput(input)
 	inputMap["UNUSED"] = "42"
-	source := NewDictSource(inputMap)
+	source := NewSource(inputMap)
 	return source.Load(configuration, mode)
 }
 
@@ -43,6 +43,7 @@ func TestDictSource_Common_Scenarios(t *testing.T) {
 		testcommon.BuildModeScenarios(),
 		testcommon.BuildAggregatedErrorScenarios(),
 		testcommon.BuildUnknownKeysScenarios(),
+		testcommon.BuildInvalidPrimitiveCastScenarios(),
 		testcommon.BuildTextUnmarshalerScenarios(),
 	}
 	for _, group := range scenarioGroups {

@@ -31,6 +31,7 @@ type ValueUnmarshalerForCaster struct {
 }
 
 func (valueUnmarshalerForCaster ValueUnmarshalerForCaster) UnmarshalText(text []byte) error {
+	_ = text
 	return nil
 }
 
@@ -82,18 +83,18 @@ func TestCaster_Int_PositiveNegative(t *testing.T) {
 	typeCaster := NewCaster()
 
 	testCases := []struct {
-		name              string
-		inputValue        string
 		targetType        reflect.Type
 		expectedInterface any
+		name              string
+		inputValue        string
 		expectError       bool
 	}{
-		{"Int", "42", reflect.TypeOf(int(0)), int(42), false},
-		{"Int8", "127", reflect.TypeOf(int8(0)), int8(127), false},
-		{"Int16", "30000", reflect.TypeOf(int16(0)), int16(30000), false},
-		{"Int32", "2147483647", reflect.TypeOf(int32(0)), int32(2147483647), false},
-		{"Int64", "9223372036854775807", reflect.TypeOf(int64(0)), int64(9223372036854775807), false},
-		{"Invalid", "x", reflect.TypeOf(int(0)), nil, true},
+		{name: "Int", inputValue: "42", targetType: reflect.TypeOf(int(0)), expectedInterface: int(42), expectError: false},
+		{name: "Int8", inputValue: "127", targetType: reflect.TypeOf(int8(0)), expectedInterface: int8(127), expectError: false},
+		{name: "Int16", inputValue: "30000", targetType: reflect.TypeOf(int16(0)), expectedInterface: int16(30000), expectError: false},
+		{name: "Int32", inputValue: "2147483647", targetType: reflect.TypeOf(int32(0)), expectedInterface: int32(2147483647), expectError: false},
+		{name: "Int64", inputValue: "9223372036854775807", targetType: reflect.TypeOf(int64(0)), expectedInterface: int64(9223372036854775807), expectError: false},
+		{name: "Invalid", inputValue: "x", targetType: reflect.TypeOf(int(0)), expectedInterface: nil, expectError: true},
 	}
 
 	for _, testCase := range testCases {
@@ -116,19 +117,19 @@ func TestCaster_Uint_PositiveNegative(t *testing.T) {
 	typeCaster := NewCaster()
 
 	testCases := []struct {
-		name              string
-		inputValue        string
 		targetType        reflect.Type
 		expectedInterface any
+		name              string
+		inputValue        string
 		expectError       bool
 	}{
-		{"Uint", "42", reflect.TypeOf(uint(0)), uint(42), false},
-		{"Uint8", "255", reflect.TypeOf(uint8(0)), uint8(255), false},
-		{"Uint16", "65535", reflect.TypeOf(uint16(0)), uint16(65535), false},
-		{"Uint32", "4294967295", reflect.TypeOf(uint32(0)), uint32(4294967295), false},
-		{"Uint64", "18446744073709551615", reflect.TypeOf(uint64(0)), uint64(18446744073709551615), false},
-		{"Uintptr", "12345", reflect.TypeOf(uintptr(0)), uintptr(12345), false},
-		{"Negative", "-1", reflect.TypeOf(uint(0)), nil, true},
+		{name: "Uint", inputValue: "42", targetType: reflect.TypeOf(uint(0)), expectedInterface: uint(42), expectError: false},
+		{name: "Uint8", inputValue: "255", targetType: reflect.TypeOf(uint8(0)), expectedInterface: uint8(255), expectError: false},
+		{name: "Uint16", inputValue: "65535", targetType: reflect.TypeOf(uint16(0)), expectedInterface: uint16(65535), expectError: false},
+		{name: "Uint32", inputValue: "4294967295", targetType: reflect.TypeOf(uint32(0)), expectedInterface: uint32(4294967295), expectError: false},
+		{name: "Uint64", inputValue: "18446744073709551615", targetType: reflect.TypeOf(uint64(0)), expectedInterface: uint64(18446744073709551615), expectError: false},
+		{name: "Uintptr", inputValue: "12345", targetType: reflect.TypeOf(uintptr(0)), expectedInterface: uintptr(12345), expectError: false},
+		{name: "Negative", inputValue: "-1", targetType: reflect.TypeOf(uint(0)), expectedInterface: nil, expectError: true},
 	}
 
 	for _, testCase := range testCases {

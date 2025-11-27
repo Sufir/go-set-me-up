@@ -9,19 +9,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type IntPositiveCase struct {
+	targetType reflect.Type
+	expected   any
+	name       string
+	inputValue string
+}
+
+type IntNegativeCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+}
+
 func TestIntOptionTypeCast_Positive(t *testing.T) {
 	optionType := IntOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-		expected   any
-	}{
-		{"Int", "42", reflect.TypeOf(int(0)), int(42)},
-		{"Int8Max", "127", reflect.TypeOf(int8(0)), int8(127)},
-		{"Int16", " 30000 ", reflect.TypeOf(int16(0)), int16(30000)},
-		{"Int32", "2147483647", reflect.TypeOf(int32(0)), int32(2147483647)},
-		{"Int64", "9223372036854775807", reflect.TypeOf(int64(0)), int64(9223372036854775807)},
+	testCases := []IntPositiveCase{
+		{name: "Int", inputValue: "42", targetType: reflect.TypeOf(int(0)), expected: int(42)},
+		{name: "Int8Max", inputValue: "127", targetType: reflect.TypeOf(int8(0)), expected: int8(127)},
+		{name: "Int16", inputValue: " 30000 ", targetType: reflect.TypeOf(int16(0)), expected: int16(30000)},
+		{name: "Int32", inputValue: "2147483647", targetType: reflect.TypeOf(int32(0)), expected: int32(2147483647)},
+		{name: "Int64", inputValue: "9223372036854775807", targetType: reflect.TypeOf(int64(0)), expected: int64(9223372036854775807)},
 	}
 
 	for _, testCase := range testCases {
@@ -36,13 +44,9 @@ func TestIntOptionTypeCast_Positive(t *testing.T) {
 
 func TestIntOptionTypeCast_Negative(t *testing.T) {
 	optionType := IntOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-	}{
-		{"InvalidNumber", "x", reflect.TypeOf(int(0))},
-		{"OverflowInt8", "128", reflect.TypeOf(int8(0))},
+	testCases := []IntNegativeCase{
+		{name: "InvalidNumber", inputValue: "x", targetType: reflect.TypeOf(int(0))},
+		{name: "OverflowInt8", inputValue: "128", targetType: reflect.TypeOf(int8(0))},
 	}
 
 	for _, testCase := range testCases {

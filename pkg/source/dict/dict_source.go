@@ -5,25 +5,24 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"unicode"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 )
 
-type DictSource struct {
+type Source struct {
 	dict   map[string]any
 	caster typecast.TypeCaster
 }
 
-func NewDictSource(dict map[string]any) *DictSource {
+func NewSource(dict map[string]any) *Source {
 	if dict == nil {
 		dict = map[string]any{}
 	}
-	return &DictSource{dict: dict, caster: typecast.NewCaster()}
+	return &Source{dict: dict, caster: typecast.NewCaster()}
 }
 
-func (source *DictSource) Load(cfg any, mode pkg.LoadMode) error {
+func (source *Source) Load(cfg any, mode pkg.LoadMode) error {
 	if mode == 0 {
 		mode = pkg.ModeOverride
 	}
@@ -43,7 +42,7 @@ func (source *DictSource) Load(cfg any, mode pkg.LoadMode) error {
 	return nil
 }
 
-func (source DictSource) loadStruct(structValue reflect.Value, dict map[string]any, mode pkg.LoadMode, errs *[]error, prefix string) {
+func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, mode pkg.LoadMode, errs *[]error, prefix string) {
 	t := structValue.Type()
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -78,7 +77,7 @@ func (source DictSource) loadStruct(structValue reflect.Value, dict map[string]a
 	}
 }
 
-func (source DictSource) lookupValue(dict map[string]any, fieldName string) (any, bool) {
+func (source Source) lookupValue(dict map[string]any, fieldName string) (any, bool) {
 	if v, ok := dict[fieldName]; ok {
 		return v, true
 	}
@@ -101,7 +100,7 @@ func asMapStringAny(v any) (map[string]any, bool) {
 	return m, ok
 }
 
-func (source DictSource) shouldSetField(fieldValue reflect.Value, mode pkg.LoadMode) bool {
+func (source Source) shouldSetField(fieldValue reflect.Value, mode pkg.LoadMode) bool {
 	if mode == pkg.ModeOverride {
 		return true
 	}
@@ -111,7 +110,7 @@ func (source DictSource) shouldSetField(fieldValue reflect.Value, mode pkg.LoadM
 	return false
 }
 
-func (source DictSource) setFieldValue(field reflect.Value, raw any) error {
+func (source Source) setFieldValue(field reflect.Value, raw any) error {
 	t := field.Type()
 	if raw == nil {
 		if isNilAssignableKind(t.Kind()) {
@@ -245,7 +244,7 @@ func convertToUpperSnake(name string) string {
 	runes := []rune(name)
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
-		if r == '-' || unicode.IsSpace(r) || r == '_' {
+		if r == '-' || r == ' ' || r == '_' {
 			if !lastUnderscore && wroteAny {
 				b.WriteByte('_')
 				lastUnderscore = true
@@ -254,30 +253,34 @@ func convertToUpperSnake(name string) string {
 			prevUpper = false
 			continue
 		}
-		if unicode.IsUpper(r) {
+		isUpper := r >= 'A' && r <= 'Z'
+		isLower := r >= 'a' && r <= 'z'
+		isDigit := r >= '0' && r <= '9'
+		if isUpper {
 			nextLower := false
 			if i+1 < len(runes) {
-				nextLower = unicode.IsLower(runes[i+1])
+				rr := runes[i+1]
+				nextLower = rr >= 'a' && rr <= 'z'
 			}
 			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
 				b.WriteByte('_')
 			}
-			b.WriteRune(unicode.ToUpper(r))
+			b.WriteRune(r)
 			lastUnderscore = false
 			wroteAny = true
 			prevLowerOrDigit = false
 			prevUpper = true
 			continue
 		}
-		if unicode.IsLower(r) {
-			b.WriteRune(unicode.ToUpper(r))
+		if isLower {
+			b.WriteRune(r - ('a' - 'A'))
 			lastUnderscore = false
 			wroteAny = true
 			prevLowerOrDigit = true
 			prevUpper = false
 			continue
 		}
-		if unicode.IsDigit(r) {
+		if isDigit {
 			b.WriteRune(r)
 			lastUnderscore = false
 			wroteAny = true

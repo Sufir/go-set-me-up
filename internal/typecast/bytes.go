@@ -10,7 +10,7 @@ func (ByteSliceOptionType) Supports(targetType reflect.Type) bool {
 	return targetType.Kind() == reflect.Slice && targetType.Elem().Kind() == reflect.Uint8
 }
 
-func (ByteSliceOptionType) Cast(value string, targetType reflect.Type) (reflect.Value, error) {
+func (ByteSliceOptionType) Cast(value string, _ reflect.Type) (reflect.Value, error) {
 	return reflect.ValueOf([]byte(value)), nil
 }
 
