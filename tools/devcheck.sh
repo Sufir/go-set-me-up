@@ -31,7 +31,7 @@ go vet ./...
 
 echo "[5/6] go mod tidy check"
 if ! git diff --exit-code -- go.mod go.sum >/dev/null; then
-  echo "go.mod/go.sum изменены после tidy. Закоммитьте эти изменения перед пушем."
+  echo "go.mod/go.sum changed after tidy. Need commit."
 fi
 
 echo "[6/6] go test -race"

@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
@@ -289,15 +290,15 @@ func convertToEnvVar(name string) string {
 			continue
 		}
 
-		isUpper := r >= 'A' && r <= 'Z'
-		isLower := r >= 'a' && r <= 'z'
-		isDigit := r >= '0' && r <= '9'
+		isUpper := unicode.IsUpper(r)
+		isLower := unicode.IsLower(r)
+		isDigit := unicode.IsDigit(r)
 
 		if isUpper {
 			nextLower := false
 			if i+1 < len(runes) {
 				rr := runes[i+1]
-				nextLower = rr >= 'a' && rr <= 'z'
+				nextLower = unicode.IsLower(rr)
 			}
 			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
 				builder.WriteByte('_')
@@ -311,7 +312,7 @@ func convertToEnvVar(name string) string {
 		}
 
 		if isLower {
-			builder.WriteRune(r - ('a' - 'A'))
+			builder.WriteRune(unicode.ToUpper(r))
 			lastUnderscore = false
 			wroteAny = true
 			prevLowerOrDigit = true
