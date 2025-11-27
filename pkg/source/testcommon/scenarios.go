@@ -126,7 +126,6 @@ type EmptyValuesConfiguration struct {
 	S string `env:"S"`
 }
 
-func In
 func IntPointer(value int) *int {
 	x := value
 	return &x
@@ -143,11 +142,11 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 				{Path: []string{"Debug"}, Value: "true"},
 				{Path: []string{"Name"}, Value: "  hello  "},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*BasicTypesConfiguration)
-				assert.Equal(t, 8080, c.Port)
-				assert.Equal(t, true, c.Debug)
-				assert.Equal(t, "hello", c.Name)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*BasicTypesConfiguration)
+				assert.Equal(t, 8080, configurationTyped.Port)
+				assert.Equal(t, true, configurationTyped.Debug)
+				assert.Equal(t, "hello", configurationTyped.Name)
 			},
 		},
 		{
@@ -158,10 +157,10 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 				{Path: []string{"FloatValue"}, Value: "3.5"},
 				{Path: []string{"ComplexValue"}, Value: "1+2i"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*CastConfiguration)
-				assert.Equal(t, 3.5, c.FloatValue)
-				assert.Equal(t, complex(1, 2), c.ComplexValue)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*CastConfiguration)
+				assert.Equal(t, 3.5, configurationTyped.FloatValue)
+				assert.Equal(t, complex(1, 2), configurationTyped.ComplexValue)
 			},
 		},
 		{
@@ -171,9 +170,9 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 			Input: []DataEntry{
 				{Path: []string{"BoolValue"}, Value: " true "},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*CastConfiguration)
-				assert.Equal(t, true, c.BoolValue)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*CastConfiguration)
+				assert.Equal(t, true, configurationTyped.BoolValue)
 			},
 		},
 	}
@@ -188,10 +187,10 @@ func BuildPointerLeafScenarios() []Scenario {
 			Input: []DataEntry{
 				{Path: []string{"NumberPointer"}, Value: "42"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*PointerConfiguration)
-				require.NotNil(t, c.NumberPointer)
-				assert.Equal(t, 42, *c.NumberPointer)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*PointerConfiguration)
+				require.NotNil(t, configurationTyped.NumberPointer)
+				assert.Equal(t, 42, *configurationTyped.NumberPointer)
 			},
 		},
 		{
@@ -201,10 +200,10 @@ func BuildPointerLeafScenarios() []Scenario {
 			Input: []DataEntry{
 				{Path: []string{"IntPointer"}, Value: "100"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*CastConfiguration)
-				require.NotNil(t, c.IntPointer)
-				assert.Equal(t, 100, *c.IntPointer)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*CastConfiguration)
+				require.NotNil(t, configurationTyped.IntPointer)
+				assert.Equal(t, 100, *configurationTyped.IntPointer)
 			},
 		},
 	}
@@ -220,10 +219,10 @@ func BuildBytesScenarios() []Scenario {
 				{Path: []string{"ByteSlice"}, Value: " a b "},
 				{Path: []string{"ByteArray"}, Value: "abc"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*CastConfiguration)
-				assert.Equal(t, []byte(" a b "), c.ByteSlice)
-				assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, c.ByteArray)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*CastConfiguration)
+				assert.Equal(t, []byte(" a b "), configurationTyped.ByteSlice)
+				assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, configurationTyped.ByteArray)
 			},
 		},
 	}
@@ -238,9 +237,9 @@ func BuildNestedValueScenarios() []Scenario {
 			Input: []DataEntry{
 				{Path: []string{"Outer", "Inner", "Value"}, Value: "123"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*RootNested)
-				assert.Equal(t, 123, c.Outer.Inner.Value)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*RootNested)
+				assert.Equal(t, 123, configurationTyped.Outer.Inner.Value)
 			},
 		},
 	}
@@ -255,11 +254,11 @@ func BuildNestedPointerScenarios() []Scenario {
 			Input: []DataEntry{
 				{Path: []string{"Outer", "Inner", "Value"}, Value: "321"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*PRootNested)
-				require.NotNil(t, c.Outer)
-				require.NotNil(t, c.Outer.Inner)
-				assert.Equal(t, 321, c.Outer.Inner.Value)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*PRootNested)
+				require.NotNil(t, configurationTyped.Outer)
+				require.NotNil(t, configurationTyped.Outer.Inner)
+				assert.Equal(t, 321, configurationTyped.Outer.Inner.Value)
 			},
 		},
 	}
@@ -271,40 +270,40 @@ func BuildModeScenarios() []Scenario {
 			Name:         "Mode_Override_Replaces_Values",
 			Mode:         pkg.ModeOverride,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
-			PreInit: func(a any) {
-				c := a.(*ModeBehaviorConfiguration)
-				c.A = 5
-				c.B = IntPointer(7)
+			PreInit: func(configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				configurationTyped.A = 5
+				configurationTyped.B = IntPointer(7)
 			},
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "10"},
 				{Path: []string{"B"}, Value: "20"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*ModeBehaviorConfiguration)
-				require.NotNil(t, c.B)
-				assert.Equal(t, 10, c.A)
-				assert.Equal(t, 20, *c.B)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				require.NotNil(t, configurationTyped.B)
+				assert.Equal(t, 10, configurationTyped.A)
+				assert.Equal(t, 20, *configurationTyped.B)
 			},
 		},
 		{
 			Name:         "Mode_FillMissing_Does_Not_Override_NonZero",
 			Mode:         pkg.ModeFillMissing,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
-			PreInit: func(a any) {
-				c := a.(*ModeBehaviorConfiguration)
-				c.A = 5
-				c.B = IntPointer(7)
+			PreInit: func(configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				configurationTyped.A = 5
+				configurationTyped.B = IntPointer(7)
 			},
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "10"},
 				{Path: []string{"B"}, Value: "20"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*ModeBehaviorConfiguration)
-				require.NotNil(t, c.B)
-				assert.Equal(t, 5, c.A)
-				assert.Equal(t, 7, *c.B)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				require.NotNil(t, configurationTyped.B)
+				assert.Equal(t, 5, configurationTyped.A)
+				assert.Equal(t, 7, *configurationTyped.B)
 			},
 		},
 		{
@@ -315,27 +314,27 @@ func BuildModeScenarios() []Scenario {
 				{Path: []string{"A"}, Value: "10"},
 				{Path: []string{"B"}, Value: "20"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*ModeBehaviorConfiguration)
-				require.NotNil(t, c.B)
-				assert.Equal(t, 10, c.A)
-				assert.Equal(t, 20, *c.B)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				require.NotNil(t, configurationTyped.B)
+				assert.Equal(t, 10, configurationTyped.A)
+				assert.Equal(t, 20, *configurationTyped.B)
 			},
 		},
 		{
 			Name:         "Default_Mode_Zero_Is_Override",
 			Mode:         0,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
-			PreInit: func(a any) {
-				c := a.(*ModeBehaviorConfiguration)
-				c.A = 1
+			PreInit: func(configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				configurationTyped.A = 1
 			},
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "10"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*ModeBehaviorConfiguration)
-				assert.Equal(t, 10, c.A)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*ModeBehaviorConfiguration)
+				assert.Equal(t, 10, configurationTyped.A)
 			},
 		},
 	}
@@ -374,11 +373,35 @@ func BuildUnknownKeysScenarios() []Scenario {
 			Mode:         pkg.ModeOverride,
 			CreateConfig: func() any { return &BasicTypesConfiguration{} },
 			Input:        []DataEntry{},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*BasicTypesConfiguration)
-				assert.Equal(t, 0, c.Port)
-				assert.Equal(t, false, c.Debug)
-				assert.Equal(t, "", c.Name)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*BasicTypesConfiguration)
+				assert.Equal(t, 0, configurationTyped.Port)
+				assert.Equal(t, false, configurationTyped.Debug)
+				assert.Equal(t, "", configurationTyped.Name)
+			},
+		},
+	}
+}
+
+func BuildEmptyValuesScenarios() []Scenario {
+	return []Scenario{
+		{
+			Name:         "Empty_Values_From_String",
+			Mode:         pkg.ModeOverride,
+			CreateConfig: func() any { return &EmptyValuesConfiguration{} },
+			Input: []DataEntry{
+				{Path: []string{"I"}, Value: ""},
+				{Path: []string{"B"}, Value: ""},
+				{Path: []string{"S"}, Value: ""},
+			},
+			AssertError: func(t *testing.T, err error) {
+				require.Error(t, err)
+				var parseErr typecast.ErrParseFailed
+				assert.True(t, errors.As(err, &parseErr))
+			},
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*EmptyValuesConfiguration)
+				assert.Equal(t, "", configurationTyped.S)
 			},
 		},
 	}
@@ -394,11 +417,64 @@ func BuildTextUnmarshalerScenarios() []Scenario {
 				{Path: []string{"ValueType"}, Value: "100"},
 				{Path: []string{"PointerType"}, Value: "200"},
 			},
-			AssertResult: func(t *testing.T, cfg any) {
-				c := cfg.(*TextUnmarshalerConfiguration)
-				assert.Equal(t, 100, c.ValueType.Value)
-				require.NotNil(t, c.PointerType)
-				assert.Equal(t, 200, c.PointerType.Value)
+			AssertResult: func(t *testing.T, configuration any) {
+				configurationTyped := configuration.(*TextUnmarshalerConfiguration)
+				assert.Equal(t, 100, configurationTyped.ValueType.Value)
+				require.NotNil(t, configurationTyped.PointerType)
+				assert.Equal(t, 200, configurationTyped.PointerType.Value)
+			},
+		},
+	}
+}
+
+func BuildInvalidPrimitiveCastScenarios() []Scenario {
+	return []Scenario{
+		{
+			Name:         "Invalid_Int_From_String",
+			Mode:         pkg.ModeOverride,
+			CreateConfig: func() any { return &CastConfiguration{} },
+			Input: []DataEntry{
+				{Path: []string{"IntValue"}, Value: "x"},
+			},
+			AssertError: func(t *testing.T, err error) {
+				require.Error(t, err)
+				var parseErr typecast.ErrParseFailed
+				assert.True(t, errors.As(err, &parseErr))
+			},
+			AssertResult: func(t *testing.T, configuration any) {
+				_ = configuration.(*CastConfiguration)
+			},
+		},
+		{
+			Name:         "Invalid_Bool_From_String",
+			Mode:         pkg.ModeOverride,
+			CreateConfig: func() any { return &CastConfiguration{} },
+			Input: []DataEntry{
+				{Path: []string{"BoolValue"}, Value: "yes"},
+			},
+			AssertError: func(t *testing.T, err error) {
+				require.Error(t, err)
+				var parseErr typecast.ErrParseFailed
+				assert.True(t, errors.As(err, &parseErr))
+			},
+			AssertResult: func(t *testing.T, configuration any) {
+				_ = configuration.(*CastConfiguration)
+			},
+		},
+		{
+			Name:         "Invalid_Complex_From_String",
+			Mode:         pkg.ModeOverride,
+			CreateConfig: func() any { return &CastConfiguration{} },
+			Input: []DataEntry{
+				{Path: []string{"ComplexValue"}, Value: "x+yi"},
+			},
+			AssertError: func(t *testing.T, err error) {
+				require.Error(t, err)
+				var parseErr typecast.ErrParseFailed
+				assert.True(t, errors.As(err, &parseErr))
+			},
+			AssertResult: func(t *testing.T, configuration any) {
+				_ = configuration.(*CastConfiguration)
 			},
 		},
 	}

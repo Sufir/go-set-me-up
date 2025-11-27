@@ -43,6 +43,7 @@ func TestDictSource_Common_Scenarios(t *testing.T) {
 		testcommon.BuildModeScenarios(),
 		testcommon.BuildAggregatedErrorScenarios(),
 		testcommon.BuildUnknownKeysScenarios(),
+		testcommon.BuildInvalidPrimitiveCastScenarios(),
 		testcommon.BuildTextUnmarshalerScenarios(),
 	}
 	for _, group := range scenarioGroups {

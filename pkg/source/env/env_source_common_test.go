@@ -74,6 +74,7 @@ func TestEnvSource_Common_Scenarios(t *testing.T) {
 		testcommon.BuildAggregatedErrorScenarios(),
 		testcommon.BuildUnknownKeysScenarios(),
 		testcommon.BuildEmptyValuesScenarios(),
+		testcommon.BuildInvalidPrimitiveCastScenarios(),
 		testcommon.BuildTextUnmarshalerScenarios(),
 	}
 	for _, group := range scenarioGroups {

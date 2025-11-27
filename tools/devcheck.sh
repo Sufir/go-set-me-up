@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+go mod tidy
+
 # Format code and simplify syntax
 echo "[1/5] gofmt (fix)"
 gofmt -s -w .
