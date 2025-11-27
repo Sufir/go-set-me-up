@@ -8,15 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type ByteSliceCase struct {
+	name       string
+	inputValue string
+	expected   []byte
+}
+
 func TestByteSliceOptionTypeCast(t *testing.T) {
 	optionType := ByteSliceOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		expected   []byte
-	}{
-		{"SimpleAscii", "abc", []byte("abc")},
-		{"IncludesSpaces", " a b ", []byte(" a b ")},
+	testCases := []ByteSliceCase{
+		{name: "SimpleAscii", inputValue: "abc", expected: []byte("abc")},
+		{name: "IncludesSpaces", inputValue: " a b ", expected: []byte(" a b ")},
 	}
 
 	for _, testCase := range testCases {

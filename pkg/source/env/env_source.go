@@ -5,19 +5,18 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"unicode"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 )
 
-type EnvSource struct {
+type Source struct {
+	caster    typecast.TypeCaster
 	prefix    string
 	delimiter string
-	caster    typecast.TypeCaster
 }
 
-func NewEnvSource(prefix string, delimiter string) *EnvSource {
+func NewSource(prefix string, delimiter string) *Source {
 	normalized := ""
 	if prefix != "" {
 		normalized = convertToEnvVar(prefix)
@@ -27,14 +26,14 @@ func NewEnvSource(prefix string, delimiter string) *EnvSource {
 		delimiter = ","
 	}
 
-	return &EnvSource{
+	return &Source{
 		prefix:    normalized,
 		delimiter: delimiter,
 		caster:    typecast.NewCaster(),
 	}
 }
 
-func (source EnvSource) Load(cfg any, mode pkg.LoadMode) error {
+func (source Source) Load(cfg any, mode pkg.LoadMode) error {
 	if mode == 0 {
 		mode = pkg.ModeOverride
 	}
@@ -82,7 +81,7 @@ func getEnv() map[string]string {
 	return result
 }
 
-func (source EnvSource) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) {
+func (source Source) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) {
 	structType := structValue.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldInfo := structType.Field(i)
@@ -111,7 +110,7 @@ func appendIfNotEmpty(segments []string, name string) []string {
 	return append(segments, name)
 }
 
-func (source EnvSource) segmentForField(fieldInfo reflect.StructField) string {
+func (source Source) segmentForField(fieldInfo reflect.StructField) string {
 	segmentName := fieldInfo.Tag.Get("envSegment")
 	if segmentName == "" {
 		segmentName = fieldInfo.Name
@@ -119,7 +118,7 @@ func (source EnvSource) segmentForField(fieldInfo reflect.StructField) string {
 	return convertToEnvVar(segmentName)
 }
 
-func (source EnvSource) resolveNestedStruct(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string) (reflect.Value, []string, bool) {
+func (source Source) resolveNestedStruct(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string) (reflect.Value, []string, bool) {
 	t := fieldInfo.Type
 	switch t.Kind() {
 	case reflect.Struct:
@@ -141,7 +140,7 @@ func (source EnvSource) resolveNestedStruct(fieldValue reflect.Value, fieldInfo 
 	}
 }
 
-func (source EnvSource) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) bool {
+func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) bool {
 	tagEnv := fieldInfo.Tag.Get("env")
 	if tagEnv == "" {
 		return false
@@ -162,7 +161,7 @@ func (source EnvSource) processLeafField(fieldValue reflect.Value, fieldInfo ref
 		}
 		setValue = defaultValue
 	}
-	if err := source.setFieldValue(fieldValue, setValue, fieldInfo, key); err != nil {
+	if err := source.setFieldValue(fieldValue, setValue); err != nil {
 		*errs = append(*errs, err)
 	}
 	return true
@@ -180,7 +179,7 @@ func buildKey(segments []string, leaf string) string {
 	return strings.Join(append(segments, leaf), "_")
 }
 
-func (source EnvSource) shouldSetField(fieldValue reflect.Value, envPresent bool, mode pkg.LoadMode, defaultValue string) bool {
+func (source Source) shouldSetField(fieldValue reflect.Value, envPresent bool, mode pkg.LoadMode, defaultValue string) bool {
 	if mode == pkg.ModeOverride {
 		if envPresent {
 			return true
@@ -216,7 +215,7 @@ func splitIntoTokens(value string, delimiter string) []string {
 	return strings.Split(value, delimiter)
 }
 
-func (source EnvSource) setFieldValue(field reflect.Value, raw string, fieldInfo reflect.StructField, envKey string) error {
+func (source Source) setFieldValue(field reflect.Value, raw string) error {
 	t := field.Type()
 
 	if t.Kind() == reflect.Ptr {
@@ -280,7 +279,7 @@ func convertToEnvVar(name string) string {
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
 
-		if r == '-' || unicode.IsSpace(r) {
+		if r == '-' || r == ' ' {
 			if !lastUnderscore && wroteAny {
 				builder.WriteByte('_')
 				lastUnderscore = true
@@ -290,15 +289,20 @@ func convertToEnvVar(name string) string {
 			continue
 		}
 
-		if unicode.IsUpper(r) {
+		isUpper := r >= 'A' && r <= 'Z'
+		isLower := r >= 'a' && r <= 'z'
+		isDigit := r >= '0' && r <= '9'
+
+		if isUpper {
 			nextLower := false
 			if i+1 < len(runes) {
-				nextLower = unicode.IsLower(runes[i+1])
+				rr := runes[i+1]
+				nextLower = rr >= 'a' && rr <= 'z'
 			}
 			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
 				builder.WriteByte('_')
 			}
-			builder.WriteRune(unicode.ToUpper(r))
+			builder.WriteRune(r)
 			lastUnderscore = false
 			wroteAny = true
 			prevLowerOrDigit = false
@@ -306,8 +310,8 @@ func convertToEnvVar(name string) string {
 			continue
 		}
 
-		if unicode.IsLower(r) {
-			builder.WriteRune(unicode.ToUpper(r))
+		if isLower {
+			builder.WriteRune(r - ('a' - 'A'))
 			lastUnderscore = false
 			wroteAny = true
 			prevLowerOrDigit = true
@@ -315,7 +319,7 @@ func convertToEnvVar(name string) string {
 			continue
 		}
 
-		if unicode.IsDigit(r) {
+		if isDigit {
 			builder.WriteRune(r)
 			lastUnderscore = false
 			wroteAny = true

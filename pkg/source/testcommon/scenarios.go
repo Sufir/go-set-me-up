@@ -6,25 +6,26 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/internal/typecast"
-	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Sufir/go-set-me-up/internal/typecast"
+	"github.com/Sufir/go-set-me-up/pkg"
 )
 
 type DataEntry struct {
-	Path  []string
 	Value string
+	Path  []string
 }
 
 type Scenario struct {
-	Name         string
-	Mode         pkg.LoadMode
 	CreateConfig func() any
 	PreInit      func(any)
-	Input        []DataEntry
 	AssertResult func(*testing.T, any)
 	AssertError  func(*testing.T, error)
+	Name         string
+	Input        []DataEntry
+	Mode         pkg.LoadMode
 }
 
 func RunScenario(t *testing.T, scenario Scenario, executeFunction func(*testing.T, any, pkg.LoadMode, []DataEntry) error) {
@@ -42,24 +43,24 @@ func RunScenario(t *testing.T, scenario Scenario, executeFunction func(*testing.
 }
 
 type BasicTypesConfiguration struct {
+	Name  string `env:"NAME"`
 	Port  int    `env:"PORT"`
 	Debug bool   `env:"DEBUG"`
-	Name  string `env:"NAME"`
 }
 
 type CastConfiguration struct {
-	IntValue     int        `env:"INT_VALUE"`
 	IntPointer   *int       `env:"INT_POINTER"`
-	BoolValue    bool       `env:"BOOL_VALUE"`
-	FloatValue   float64    `env:"FLOAT_VALUE"`
-	ComplexValue complex128 `env:"COMPLEX_VALUE"`
 	ByteSlice    []byte     `env:"BYTE_SLICE"`
+	ComplexValue complex128 `env:"COMPLEX_VALUE"`
+	IntValue     int        `env:"INT_VALUE"`
+	FloatValue   float64    `env:"FLOAT_VALUE"`
 	ByteArray    [5]byte    `env:"BYTE_ARRAY"`
+	BoolValue    bool       `env:"BOOL_VALUE"`
 }
 
 type ModeBehaviorConfiguration struct {
-	A int  `env:"A"`
 	B *int `env:"B"`
+	A int  `env:"A"`
 }
 
 type NestedInner struct {
@@ -105,13 +106,13 @@ func (c *CustomUnmarshaler) UnmarshalText(text []byte) error {
 }
 
 type TextUnmarshalerConfiguration struct {
-	ValueType   CustomUnmarshaler  `env:"U1"`
 	PointerType *CustomUnmarshaler `env:"U2"`
+	ValueType   CustomUnmarshaler  `env:"U1"`
 }
 
 type AggregationConfiguration struct {
-	A     int   `env:"A"`
 	B     []int `env:"B"`
+	A     int   `env:"A"`
 	C     int   `env:"C"`
 	Outer struct {
 		Inner struct {
@@ -121,9 +122,9 @@ type AggregationConfiguration struct {
 }
 
 type EmptyValuesConfiguration struct {
+	S string `env:"S"`
 	I int    `env:"I"`
 	B bool   `env:"B"`
-	S string `env:"S"`
 }
 
 func IntPointer(value int) *int {
@@ -359,7 +360,7 @@ func BuildAggregatedErrorScenarios() []Scenario {
 				assert.True(t, errors.As(err, &parseErr))
 				assert.True(t, errors.As(err, &unsupportedErr))
 			},
-			AssertResult: func(t *testing.T, cfg any) {
+			AssertResult: func(_ *testing.T, cfg any) {
 				_ = cfg
 			},
 		},
@@ -441,7 +442,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 				var parseErr typecast.ErrParseFailed
 				assert.True(t, errors.As(err, &parseErr))
 			},
-			AssertResult: func(t *testing.T, configuration any) {
+			AssertResult: func(_ *testing.T, configuration any) {
 				_ = configuration.(*CastConfiguration)
 			},
 		},
@@ -457,7 +458,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 				var parseErr typecast.ErrParseFailed
 				assert.True(t, errors.As(err, &parseErr))
 			},
-			AssertResult: func(t *testing.T, configuration any) {
+			AssertResult: func(_ *testing.T, configuration any) {
 				_ = configuration.(*CastConfiguration)
 			},
 		},
@@ -473,7 +474,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 				var parseErr typecast.ErrParseFailed
 				assert.True(t, errors.As(err, &parseErr))
 			},
-			AssertResult: func(t *testing.T, configuration any) {
+			AssertResult: func(_ *testing.T, configuration any) {
 				_ = configuration.(*CastConfiguration)
 			},
 		},

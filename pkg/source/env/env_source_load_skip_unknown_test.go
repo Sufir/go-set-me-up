@@ -3,9 +3,10 @@ package env
 import (
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Sufir/go-set-me-up/pkg"
 )
 
 type SkipConfig struct {
@@ -17,7 +18,7 @@ type UnusedConfig struct {
 }
 
 func TestEnvSource_Load_SkipFieldWithDashTag(t *testing.T) {
-	source := NewEnvSource("app", ",")
+	source := NewSource("app", ",")
 
 	t.Setenv("APP_VALUE", "123")
 

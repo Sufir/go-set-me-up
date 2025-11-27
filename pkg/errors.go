@@ -5,13 +5,15 @@ import (
 	"fmt"
 )
 
-var ErrLoaderSourceFailed = errors.New("loader source failed")
-var ErrLoadAggregatedFailed = errors.New("aggregated load failed")
+var (
+	ErrLoaderSourceFailed   = errors.New("loader source failed")
+	ErrLoadAggregatedFailed = errors.New("aggregated load failed")
+)
 
 type LoaderSourceFailedError struct {
-	SourceIndex   int
-	SourceName    string
 	OriginalError error
+	SourceName    string
+	SourceIndex   int
 }
 
 func NewLoaderSourceFailedError(sourceIndex int, sourceName string, originalError error) error {

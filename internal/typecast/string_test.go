@@ -8,18 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type StringCase struct {
+	name       string
+	inputValue string
+	targetType reflect.Type
+	expected   string
+}
+
 func TestStringOptionTypeCast_Table(t *testing.T) {
 	optionType := StringOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-		expected   string
-	}{
-		{"EmptyString", "", reflect.TypeOf(""), ""},
-		{"TrimSpacesBothSides", "  hello  ", reflect.TypeOf(""), "hello"},
-		{"InternalSpacesKept", " a b ", reflect.TypeOf(""), "a b"},
-		{"NoTrimNeeded", "test", reflect.TypeOf(""), "test"},
+	testCases := []StringCase{
+		{name: "EmptyString", inputValue: "", targetType: reflect.TypeOf(""), expected: ""},
+		{name: "TrimSpacesBothSides", inputValue: "  hello  ", targetType: reflect.TypeOf(""), expected: "hello"},
+		{name: "InternalSpacesKept", inputValue: " a b ", targetType: reflect.TypeOf(""), expected: "a b"},
+		{name: "NoTrimNeeded", inputValue: "test", targetType: reflect.TypeOf(""), expected: "test"},
 	}
 
 	for _, testCase := range testCases {

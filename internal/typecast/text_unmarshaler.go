@@ -1,11 +1,14 @@
 package typecast
 
 import (
-	"encoding"
 	"reflect"
 )
 
-var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+type textUnmarshaler interface {
+	UnmarshalText([]byte) error
+}
+
+var textUnmarshalerType = reflect.TypeOf((*textUnmarshaler)(nil)).Elem()
 
 type TextUnmarshalerOptionType struct{}
 
@@ -24,14 +27,14 @@ func (TextUnmarshalerOptionType) Cast(value string, targetType reflect.Type) (re
 	}
 
 	if v.Kind() == reflect.Ptr {
-		u := v.Interface().(encoding.TextUnmarshaler)
+		u := v.Interface().(textUnmarshaler)
 		if err := u.UnmarshalText([]byte(value)); err != nil {
 			return reflect.Value{}, ErrParseFailed{Type: targetType, Value: value, Cause: err}
 		}
 		return v, nil
 	}
 
-	u := v.Addr().Interface().(encoding.TextUnmarshaler)
+	u := v.Addr().Interface().(textUnmarshaler)
 	if err := u.UnmarshalText([]byte(value)); err != nil {
 		return reflect.Value{}, ErrParseFailed{Type: targetType, Value: value, Cause: err}
 	}

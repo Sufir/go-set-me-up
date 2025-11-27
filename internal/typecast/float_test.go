@@ -10,17 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type FloatPositiveCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+	expected   float64
+}
+
+type FloatNegativeCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+}
+
 func TestFloatOptionTypeCast_Positive(t *testing.T) {
 	optionType := FloatOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-		expected   float64
-	}{
-		{"Float32Simple", "3.5", reflect.TypeOf(float32(0)), 3.5},
-		{"Float64WithSpaces", " 2.25 ", reflect.TypeOf(float64(0)), 2.25},
-		{"NegativeFloat", "-0.5", reflect.TypeOf(float64(0)), -0.5},
+	testCases := []FloatPositiveCase{
+		{name: "Float32Simple", inputValue: "3.5", targetType: reflect.TypeOf(float32(0)), expected: 3.5},
+		{name: "Float64WithSpaces", inputValue: " 2.25 ", targetType: reflect.TypeOf(float64(0)), expected: 2.25},
+		{name: "NegativeFloat", inputValue: "-0.5", targetType: reflect.TypeOf(float64(0)), expected: -0.5},
 	}
 
 	for _, testCase := range testCases {
@@ -36,14 +44,10 @@ func TestFloatOptionTypeCast_Positive(t *testing.T) {
 
 func TestFloatOptionTypeCast_Negative(t *testing.T) {
 	optionType := FloatOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-	}{
-		{"InvalidNumber", "x", reflect.TypeOf(float32(0))},
-		{"Garbage", "abc", reflect.TypeOf(float64(0))},
-		{"TooLargeExponent", "1e309", reflect.TypeOf(float64(0))},
+	testCases := []FloatNegativeCase{
+		{name: "InvalidNumber", inputValue: "x", targetType: reflect.TypeOf(float32(0))},
+		{name: "Garbage", inputValue: "abc", targetType: reflect.TypeOf(float64(0))},
+		{name: "TooLargeExponent", inputValue: "1e309", targetType: reflect.TypeOf(float64(0))},
 	}
 
 	for _, testCase := range testCases {

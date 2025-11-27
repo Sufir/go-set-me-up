@@ -54,7 +54,7 @@ func buildEnvKeyFromPath(prefix string, configuration any, path []string) string
 
 func executeEnvScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
 	prefix := "app"
-	source := NewEnvSource(prefix, ",")
+	source := NewSource(prefix, ",")
 	for _, entry := range input {
 		key := buildEnvKeyFromPath(prefix, configuration, entry.Path)
 		t.Setenv(key, entry.Value)

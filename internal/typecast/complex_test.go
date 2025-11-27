@@ -10,19 +10,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type ComplexPositiveCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+	expected   complex128
+}
+
+type ComplexNegativeCase struct {
+	targetType reflect.Type
+	name       string
+	inputValue string
+}
+
 func TestComplexOptionTypeCast_Positive(t *testing.T) {
 	optionType := ComplexOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-		expected   complex128
-	}{
-		{"Complex128Simple", "1+2i", reflect.TypeOf(complex128(0)), complex(1, 2)},
-		{"Complex128WithSpaces", " (3-4i) ", reflect.TypeOf(complex128(0)), complex(3, -4)},
-		{"RealOnly", "5", reflect.TypeOf(complex128(0)), complex(5, 0)},
-		{"ScientificNotation", "1e2+3.5i", reflect.TypeOf(complex128(0)), complex(100, 3.5)},
-		{"Complex64Simple", "2-0.5i", reflect.TypeOf(complex64(0)), complex(2, -0.5)},
+	testCases := []ComplexPositiveCase{
+		{name: "Complex128Simple", inputValue: "1+2i", targetType: reflect.TypeOf(complex128(0)), expected: complex(1, 2)},
+		{name: "Complex128WithSpaces", inputValue: " (3-4i) ", targetType: reflect.TypeOf(complex128(0)), expected: complex(3, -4)},
+		{name: "RealOnly", inputValue: "5", targetType: reflect.TypeOf(complex128(0)), expected: complex(5, 0)},
+		{name: "ScientificNotation", inputValue: "1e2+3.5i", targetType: reflect.TypeOf(complex128(0)), expected: complex(100, 3.5)},
+		{name: "Complex64Simple", inputValue: "2-0.5i", targetType: reflect.TypeOf(complex64(0)), expected: complex(2, -0.5)},
 	}
 
 	for _, testCase := range testCases {
@@ -45,14 +53,10 @@ func TestComplexOptionTypeCast_Positive(t *testing.T) {
 
 func TestComplexOptionTypeCast_Negative(t *testing.T) {
 	optionType := ComplexOptionType{}
-	testCases := []struct {
-		name       string
-		inputValue string
-		targetType reflect.Type
-	}{
-		{"EmptyValue", "", reflect.TypeOf(complex128(0))},
-		{"MissingImaginaryUnit", "1+2", reflect.TypeOf(complex128(0))},
-		{"InvalidNumber", "x+yi", reflect.TypeOf(complex64(0))},
+	testCases := []ComplexNegativeCase{
+		{name: "EmptyValue", inputValue: "", targetType: reflect.TypeOf(complex128(0))},
+		{name: "MissingImaginaryUnit", inputValue: "1+2", targetType: reflect.TypeOf(complex128(0))},
+		{name: "InvalidNumber", inputValue: "x+yi", targetType: reflect.TypeOf(complex64(0))},
 	}
 
 	for _, testCase := range testCases {
