@@ -1,55 +1,60 @@
+version: "2"
+
 run:
-  timeout: 3m
   tests: true
-  skip-dirs:
-    - "vendor"
-    - ".docker"
-    - "tools"
 
 issues:
   max-issues-per-linter: 50
   max-same-issues: 5
-  exclude-use-default: false
+  exclude-dirs:
+    - vendor
+    - .docker
+    - tools
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - govet
-    - revive       # (use .revive.toml)
-    - gosimple     # упрощает код без фанатизма
-    - staticcheck  # глубокий анализ
-    - unused       # неиспользуемые переменные/функции
-    - ineffassign  # присваивания, которые ни на что не влияют
-    - errcheck     # контроль ошибок функций
-    - goconst      # строковые/числовые константы при повторениях
-    - gofumpt      # строгий форматтер — стабильное форматирование
-    - misspell     # опечатки в комментариях
-    - prealloc     # оптимизация выделения слайсов только в hot-коде
-    - stylecheck   # рекомендации по стилю (замена устаревшего golint)
-    - typecheck    # ошибки типов как компилятор, но глубже
+    - revive
+    - staticcheck
+    - unused
+    - ineffassign
+    - errcheck
+    - goconst
+    - prealloc
+  settings:
+    revive:
+      config: tools/.revive.toml
+    goconst:
+      ignore-tests: true
+      min-occurrences: 3
+    errcheck:
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Println
+    prealloc:
+      simple: true
+    govet:
+      enable-all: true
+      disable:
+        - shadow
 
-linters-settings:
-  revive:
-    config: tools/.revive.toml
-
-  goconst:
-    ignore-tests: true
-    min-occurrences: 3
-
-  errcheck:
-    exclude-functions:
-      - fmt.Fprintf
-      - fmt.Fprintf
-      - fmt.Fprintln
-      - fmt.Println
-
-  prealloc:
-    simple: true
-
-  govet:
-    enable-all: true
-    disable:
-      - shadow
+  exclusions:
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+      - legacy
 
 output:
-  format: colored-line-number
+  text:
+    path: stdout
+    print-issued-lines: true
+    print-linter-name: true
+    colors: true
+
+formatters:
+  enable:
+    - gofumpt
