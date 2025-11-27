@@ -1,0 +1,47 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  lint:
+    name: Static checks
+    runs-on: ubuntu-latest
+    container:
+      image: golang:1.24-bookworm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare tools
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+          go install golang.org/x/tools/cmd/goimports@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Check gofmt
+        run: |
+          OUT=$(gofmt -s -l .)
+          if [ -n "$OUT" ]; then
+            echo "$OUT"
+            exit 1
+          fi
+
+      - name: Check goimports
+        run: |
+          MODULE=$(go list -m)
+          OUT=$(goimports -l -local "$MODULE" ./)
+          if [ -n "$OUT" ]; then
+            echo "$OUT"
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        run: golangci-lint run --config tools/.golangci-lint.yml --timeout 3m

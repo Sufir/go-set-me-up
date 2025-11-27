@@ -1,0 +1,30 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests with race detector
+        # Race detector helps catch concurrency issues early
+        run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Upload coverage to GitHub summary
+        # Visible coverage summary in PR UI
+        run: |
+          COVER=$(go tool cover -func coverage.out | grep total | awk '{print $3}')
+          echo "### Test Coverage: $COVER" >> $GITHUB_STEP_SUMMARY

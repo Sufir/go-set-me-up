@@ -1,0 +1,17 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+    container_name: go-set-me-up-dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - gomodcache:/go/pkg/mod
+      - gocache:/root/.cache/go-build
+    command: sleep infinity
+    restart: unless-stopped
+volumes:
+  gomodcache:
+  gocache:
+  

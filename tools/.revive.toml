@@ -1,0 +1,23 @@
+ignoreGeneratedHeader = false
+severity = "warning"
+
+rules = [
+  { name = "var-naming" },
+  { name = "function-naming" },
+  { name = "package-comments" }, # package must be commented
+  { name = "exported" },         # обязательные комментарии к экспортируемым символам
+  { name = "indent-error-flow" },# return err сразу после проверки
+  { name = "error-naming" },
+  { name = "errorf" },           # ошибка должна начинаться с маленькой и без форматирования, если без аргументов
+  { name = "unexported-return" },# экспортируемые функции не должны возвращать приватные типы
+  { name = "empty-block" },
+  { name = "superfluous-else" },
+  { name = "redundant-import-alias" }
+]
+
+# Не заставляем делать комментарии к приватным функциям (минимум шума)
+[rule.exported]
+severity = "warning"
+
+[rule.package-comments]
+severity = "warning"
