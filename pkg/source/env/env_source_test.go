@@ -136,7 +136,7 @@ func TestLoadStruct_SetsOnlyTaggedFields(t *testing.T) {
 		"APP_NOT_USED":  "9",
 	}
 	var errs []error
-	source.loadStruct(reflect.ValueOf(&r).Elem(), []string{"APP"}, env, pkg.ModeOverride, &errs)
+	source.loadStruct(reflect.ValueOf(&r).Elem(), []string{"APP"}, env, pkg.ModeOverride, &errs, "")
 	require.Empty(t, errs)
 	assert.Equal(t, 123, r.Sub.Value)
 	assert.Equal(t, 0, r.Skip)
