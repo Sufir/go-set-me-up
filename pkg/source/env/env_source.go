@@ -9,6 +9,7 @@ import (
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 type Source struct {
@@ -35,18 +36,10 @@ func NewSource(prefix string, delimiter string) *Source {
 }
 
 func (source Source) Load(cfg any, mode pkg.LoadMode) error {
-	if mode == 0 {
-		mode = pkg.ModeOverride
-	}
-
-	value := reflect.ValueOf(cfg)
-	if value.Kind() != reflect.Ptr || value.IsNil() {
-		return errors.New("target must be a non-nil pointer to struct")
-	}
-
-	elem := value.Elem()
-	if elem.Kind() != reflect.Struct {
-		return errors.New("target must be pointer to struct")
+	mode = sourceutil.DefaultMode(mode)
+	elem, err := sourceutil.EnsureTargetStruct(cfg)
+	if err != nil {
+		return err
 	}
 
 	environment := getEnv()
@@ -56,12 +49,11 @@ func (source Source) Load(cfg any, mode pkg.LoadMode) error {
 		segments = append(segments, source.prefix)
 	}
 
-	source.loadStruct(elem, segments, environment, mode, &collected)
+	source.loadStruct(elem, segments, environment, mode, &collected, "")
 
 	if len(collected) > 0 {
-		return errors.Join(collected...)
+		return pkg.NewAggregatedLoadFailedError(errors.Join(collected...))
 	}
-
 	return nil
 }
 
@@ -82,7 +74,7 @@ func getEnv() map[string]string {
 	return result
 }
 
-func (source Source) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) {
+func (source Source) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error, prefix string) {
 	structType := structValue.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldInfo := structType.Field(i)
@@ -93,14 +85,14 @@ func (source Source) loadStruct(structValue reflect.Value, segments []string, en
 			continue
 		}
 		fieldValue := structValue.Field(i)
-		if source.processLeafField(fieldValue, fieldInfo, segments, env, mode, errs) {
+		if source.processLeafField(fieldValue, fieldInfo, segments, env, mode, errs, prefix) {
 			continue
 		}
 		nestedValue, nextSegments, ok := source.resolveNestedStruct(fieldValue, fieldInfo, segments)
 		if !ok {
 			continue
 		}
-		source.loadStruct(nestedValue, nextSegments, env, mode, errs)
+		source.loadStruct(nestedValue, nextSegments, env, mode, errs, makePath(prefix, fieldInfo.Name))
 	}
 }
 
@@ -141,7 +133,7 @@ func (source Source) resolveNestedStruct(fieldValue reflect.Value, fieldInfo ref
 	}
 }
 
-func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error) bool {
+func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error, prefix string) bool {
 	tagEnv := fieldInfo.Tag.Get("env")
 	if tagEnv == "" {
 		return false
@@ -150,7 +142,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 	key := buildKey(segments, leaf)
 	val, ok := env[key]
 	defaultValue := fieldInfo.Tag.Get("envDefault")
-	if !source.shouldSetField(fieldValue, ok, mode, defaultValue) {
+	if !sourceutil.ShouldAssign(fieldValue, ok, mode, defaultValue) {
 		return true
 	}
 	setValue := ""
@@ -162,8 +154,9 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 		}
 		setValue = defaultValue
 	}
-	if err := source.setFieldValue(fieldValue, setValue); err != nil {
-		*errs = append(*errs, err)
+	if err := sourceutil.AssignFromString(source.caster, fieldValue, setValue); err != nil {
+		path := makePath(prefix, fieldInfo.Name)
+		*errs = append(*errs, pkg.NewEnvFieldFailedError(key, setValue, path, err))
 	}
 	return true
 }
@@ -178,6 +171,13 @@ func buildKey(segments []string, leaf string) string {
 	}
 
 	return strings.Join(append(segments, leaf), "_")
+}
+
+func makePath(prefix, name string) string {
+	if prefix == "" {
+		return name
+	}
+	return prefix + "." + name
 }
 
 func (source Source) shouldSetField(fieldValue reflect.Value, envPresent bool, mode pkg.LoadMode, defaultValue string) bool {

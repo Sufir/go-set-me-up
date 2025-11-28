@@ -8,6 +8,8 @@ import (
 var (
 	ErrLoaderSourceFailed   = errors.New("loader source failed")
 	ErrLoadAggregatedFailed = errors.New("aggregated load failed")
+	ErrInvalidTarget        = errors.New("invalid target")
+	ErrSourceFieldFailed    = errors.New("source field failed")
 )
 
 type LoaderSourceFailedError struct {
@@ -44,4 +46,57 @@ func (aggregatedLoadFailedError *AggregatedLoadFailedError) Error() string {
 
 func (aggregatedLoadFailedError *AggregatedLoadFailedError) Unwrap() error {
 	return aggregatedLoadFailedError.Aggregated
+}
+
+type InvalidTargetError struct {
+	Reason string
+}
+
+func NewInvalidTargetError(reason string) error {
+	typedError := &InvalidTargetError{Reason: reason}
+	return fmt.Errorf("%w: %w", ErrInvalidTarget, typedError)
+}
+
+func (invalidTargetError *InvalidTargetError) Error() string {
+	return fmt.Sprintf("invalid target: %s", invalidTargetError.Reason)
+}
+
+type SourceFieldFailedError struct {
+	OriginalError error
+	SourceName    string
+	Key           string
+	Value         string
+	Path          string
+}
+
+func NewEnvFieldFailedError(key string, value string, path string, originalError error) error {
+	typedError := &SourceFieldFailedError{SourceName: "env", Key: key, Value: value, Path: path, OriginalError: originalError}
+	return fmt.Errorf("%w: %w", ErrSourceFieldFailed, typedError)
+}
+
+func NewDictFieldFailedError(path string, originalError error) error {
+	typedError := &SourceFieldFailedError{SourceName: "dict", Path: path, OriginalError: originalError}
+	return fmt.Errorf("%w: %w", ErrSourceFieldFailed, typedError)
+}
+
+func NewFlagsFieldFailedError(name string, value string, path string, originalError error) error {
+	typedError := &SourceFieldFailedError{SourceName: "flags", Key: name, Value: value, Path: path, OriginalError: originalError}
+	return fmt.Errorf("%w: %w", ErrSourceFieldFailed, typedError)
+}
+
+func (e *SourceFieldFailedError) Error() string {
+	if e.SourceName == "env" {
+		return fmt.Sprintf("env %s=%s field %s: %v", e.Key, e.Value, e.Path, e.OriginalError)
+	}
+	if e.SourceName == "flags" {
+		if e.Path != "" {
+			return fmt.Sprintf("flags %s=%s field %s: %v", e.Key, e.Value, e.Path, e.OriginalError)
+		}
+		return fmt.Sprintf("flags %s=%s: %v", e.Key, e.Value, e.OriginalError)
+	}
+	return fmt.Sprintf("dict field %s: %v", e.Path, e.OriginalError)
+}
+
+func (e *SourceFieldFailedError) Unwrap() error {
+	return e.OriginalError
 }

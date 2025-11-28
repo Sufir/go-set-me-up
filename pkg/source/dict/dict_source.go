@@ -2,12 +2,12 @@ package dict
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 type Source struct {
@@ -22,22 +22,16 @@ func NewSource(dict map[string]any) *Source {
 	return &Source{dict: dict, caster: typecast.NewCaster()}
 }
 
-func (source *Source) Load(cfg any, mode pkg.LoadMode) error {
-	if mode == 0 {
-		mode = pkg.ModeOverride
-	}
-	v := reflect.ValueOf(cfg)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
-		return errors.New("target must be a non-nil pointer to struct")
-	}
-	e := v.Elem()
-	if e.Kind() != reflect.Struct {
-		return errors.New("target must be pointer to struct")
+func (source Source) Load(cfg any, mode pkg.LoadMode) error {
+	mode = sourceutil.DefaultMode(mode)
+	e, err := sourceutil.EnsureTargetStruct(cfg)
+	if err != nil {
+		return err
 	}
 	var errs []error
 	source.loadStruct(e, source.dict, mode, &errs, "")
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		return pkg.NewAggregatedLoadFailedError(errors.Join(errs...))
 	}
 	return nil
 }
@@ -71,8 +65,8 @@ func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, 
 		if !source.shouldSetField(fv, mode) {
 			continue
 		}
-		if err := source.setFieldValue(fv, raw); err != nil {
-			*errs = append(*errs, fmt.Errorf("field %s (type %v): %w", makePath(prefix, f.Name), fv.Type(), err))
+		if err := sourceutil.AssignFromAny(source.caster, fv, raw); err != nil {
+			*errs = append(*errs, pkg.NewDictFieldFailedError(makePath(prefix, f.Name), err))
 		}
 	}
 }
@@ -108,123 +102,6 @@ func (source Source) shouldSetField(fieldValue reflect.Value, mode pkg.LoadMode)
 		return fieldValue.IsZero()
 	}
 	return false
-}
-
-func (source Source) setFieldValue(field reflect.Value, raw any) error {
-	t := field.Type()
-	if raw == nil {
-		if isNilAssignableKind(t.Kind()) {
-			field.Set(reflect.Zero(t))
-			return nil
-		}
-		return typecast.ErrUnsupportedType{Type: t}
-	}
-	rv := reflect.ValueOf(raw)
-	if t.Kind() == reflect.Ptr {
-		elem := t.Elem()
-		if rv.Kind() == reflect.String {
-			v, err := source.caster.Cast(rv.String(), elem)
-			if err != nil {
-				return err
-			}
-			if v.Type() == t {
-				field.Set(v)
-				return nil
-			}
-			if v.Kind() == reflect.Ptr && v.Type().Elem() == elem {
-				field.Set(v)
-				return nil
-			}
-			if v.Type() == elem {
-				p := reflect.New(elem)
-				p.Elem().Set(v)
-				field.Set(p)
-				return nil
-			}
-			if v.Type().ConvertibleTo(elem) {
-				p := reflect.New(elem)
-				p.Elem().Set(v.Convert(elem))
-				field.Set(p)
-				return nil
-			}
-			return typecast.ErrUnsupportedType{Type: t}
-		}
-		if rv.Type() == t {
-			field.Set(rv)
-			return nil
-		}
-		if rv.Kind() == reflect.Ptr && rv.Type().Elem() == elem {
-			field.Set(rv)
-			return nil
-		}
-		if rv.Type() == elem {
-			p := reflect.New(elem)
-			p.Elem().Set(rv)
-			field.Set(p)
-			return nil
-		}
-		if rv.Type().ConvertibleTo(elem) {
-			p := reflect.New(elem)
-			p.Elem().Set(rv.Convert(elem))
-			field.Set(p)
-			return nil
-		}
-		return typecast.ErrUnsupportedType{Type: t}
-	}
-	if rv.Kind() == reflect.String {
-		v, err := source.caster.Cast(rv.String(), t)
-		if err != nil {
-			return err
-		}
-		if v.Type() == t {
-			field.Set(v)
-			return nil
-		}
-		if v.Kind() == reflect.Ptr && v.Type().Elem() == t {
-			field.Set(v.Elem())
-			return nil
-		}
-		if v.Type().ConvertibleTo(t) {
-			field.Set(v.Convert(t))
-			return nil
-		}
-		return typecast.ErrUnsupportedType{Type: t}
-	}
-	if rv.Kind() == reflect.Ptr {
-		if rv.IsNil() {
-			if isNilAssignableKind(t.Kind()) {
-				field.Set(reflect.Zero(t))
-				return nil
-			}
-			return typecast.ErrUnsupportedType{Type: t}
-		}
-		if rv.Type().Elem() == t {
-			field.Set(rv.Elem())
-			return nil
-		}
-		if rv.Elem().Type().ConvertibleTo(t) {
-			field.Set(rv.Elem().Convert(t))
-			return nil
-		}
-	}
-	if rv.Type() == t {
-		field.Set(rv)
-		return nil
-	}
-	if rv.Type().ConvertibleTo(t) {
-		field.Set(rv.Convert(t))
-		return nil
-	}
-	return typecast.ErrUnsupportedType{Type: t}
-}
-
-func isNilAssignableKind(k reflect.Kind) bool {
-	switch k {
-	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Func, reflect.Interface, reflect.Chan:
-		return true
-	default:
-		return false
-	}
 }
 
 func makePath(prefix, name string) string {

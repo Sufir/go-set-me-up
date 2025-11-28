@@ -43,28 +43,28 @@ func RunScenario(t *testing.T, scenario Scenario, executeFunction func(*testing.
 }
 
 type BasicTypesConfiguration struct {
-	Name  string `env:"NAME"`
-	Port  int    `env:"PORT"`
-	Debug bool   `env:"DEBUG"`
+	Name  string `env:"NAME" flag:"name" flagShort:"n"`
+	Port  int    `env:"PORT" flag:"port" flagShort:"p"`
+	Debug bool   `env:"DEBUG" flag:"debug" flagShort:"d"`
 }
 
 type CastConfiguration struct {
-	IntPointer   *int       `env:"INT_POINTER"`
-	ByteSlice    []byte     `env:"BYTE_SLICE"`
-	ComplexValue complex128 `env:"COMPLEX_VALUE"`
-	IntValue     int        `env:"INT_VALUE"`
-	FloatValue   float64    `env:"FLOAT_VALUE"`
-	ByteArray    [5]byte    `env:"BYTE_ARRAY"`
-	BoolValue    bool       `env:"BOOL_VALUE"`
+	IntPointer   *int       `env:"INT_POINTER" flag:"int_pointer" flagShort:"ip"`
+	ByteSlice    []byte     `env:"BYTE_SLICE" flag:"byte_slice" flagShort:"bs"`
+	ComplexValue complex128 `env:"COMPLEX_VALUE" flag:"complex_value" flagShort:"cv"`
+	IntValue     int        `env:"INT_VALUE" flag:"int_value" flagShort:"iv"`
+	FloatValue   float64    `env:"FLOAT_VALUE" flag:"float_value" flagShort:"fv"`
+	ByteArray    [5]byte    `env:"BYTE_ARRAY" flag:"byte_array" flagShort:"ba"`
+	BoolValue    bool       `env:"BOOL_VALUE" flag:"bool_value" flagShort:"bv"`
 }
 
 type ModeBehaviorConfiguration struct {
-	B *int `env:"B"`
-	A int  `env:"A"`
+	B *int `env:"B" flag:"b" flagShort:"B" flagDefault:"20"`
+	A int  `env:"A" flag:"a" flagShort:"A" flagDefault:"10"`
 }
 
 type NestedInner struct {
-	Value int `env:"VALUE"`
+	Value int `env:"VALUE" flag:"value" flagShort:"v"`
 }
 
 type NestedOuter struct {
@@ -76,7 +76,7 @@ type RootNested struct {
 }
 
 type PNestedInner struct {
-	Value int `env:"VALUE"`
+	Value int `env:"VALUE" flag:"value" flagShort:"v"`
 }
 
 type PNestedOuter struct {
@@ -88,7 +88,7 @@ type PRootNested struct {
 }
 
 type PointerConfiguration struct {
-	NumberPointer *int `env:"P"`
+	NumberPointer *int `env:"P" flag:"p" flagShort:"np"`
 }
 
 type CustomUnmarshaler struct {
@@ -106,25 +106,25 @@ func (c *CustomUnmarshaler) UnmarshalText(text []byte) error {
 }
 
 type TextUnmarshalerConfiguration struct {
-	PointerType *CustomUnmarshaler `env:"U2"`
-	ValueType   CustomUnmarshaler  `env:"U1"`
+	PointerType *CustomUnmarshaler `env:"U2" flag:"u2" flagShort:"u2s"`
+	ValueType   CustomUnmarshaler  `env:"U1" flag:"u1" flagShort:"u1s"`
 }
 
 type AggregationConfiguration struct {
-	B     []int `env:"B"`
-	A     int   `env:"A"`
-	C     int   `env:"C"`
+	B     []int `env:"B" flag:"b" flagShort:"B"`
+	A     int   `env:"A" flag:"a" flagShort:"A"`
+	C     int   `env:"C" flag:"c" flagShort:"C"`
 	Outer struct {
 		Inner struct {
-			Value int `env:"VALUE"`
+			Value int `env:"VALUE" flag:"value" flagShort:"v"`
 		} `envSegment:"inner"`
 	} `envSegment:"outer"`
 }
 
 type EmptyValuesConfiguration struct {
-	S string `env:"S"`
-	I int    `env:"I"`
-	B bool   `env:"B"`
+	S string `env:"S" flag:"s" flagShort:"S"`
+	I int    `env:"I" flag:"i" flagShort:"I"`
+	B bool   `env:"B" flag:"b" flagShort:"B"`
 }
 
 func IntPointer(value int) *int {
