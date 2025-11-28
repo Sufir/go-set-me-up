@@ -116,7 +116,7 @@ func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
 	cfg := Simple{}
 	err := source.Load(&cfg, pkg.ModeOverride)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "field X (type int)")
+	assert.Contains(t, err.Error(), "dict field X: unsupported type int")
 }
 
 func TestDictSource_MapToStruct_NonStructField_Ignored(t *testing.T) {
