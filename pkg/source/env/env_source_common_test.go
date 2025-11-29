@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
 )
 
 func buildEnvKeyFromPath(prefix string, configuration any, path []string) string {
 	segments := []string{}
 	if prefix != "" {
-		segments = append(segments, convertToEnvVar(prefix))
+		segments = append(segments, sourceutil.ConvertToEnvVar(prefix))
 	}
 	configurationValue := reflect.ValueOf(configuration)
 	if configurationValue.Kind() == reflect.Ptr {
@@ -23,7 +24,7 @@ func buildEnvKeyFromPath(prefix string, configuration any, path []string) string
 		fieldName := path[i]
 		field, ok := currentType.FieldByName(fieldName)
 		if !ok {
-			segmentName := convertToEnvVar(fieldName)
+			segmentName := sourceutil.ConvertToEnvVar(fieldName)
 			segments = append(segments, segmentName)
 			continue
 		}
@@ -31,7 +32,7 @@ func buildEnvKeyFromPath(prefix string, configuration any, path []string) string
 		if segmentCandidate == "" {
 			segmentCandidate = field.Name
 		}
-		segmentName := convertToEnvVar(segmentCandidate)
+		segmentName := sourceutil.ConvertToEnvVar(segmentCandidate)
 		segments = append(segments, segmentName)
 		fieldType := field.Type
 		if fieldType.Kind() == reflect.Ptr {
@@ -48,19 +49,19 @@ func buildEnvKeyFromPath(prefix string, configuration any, path []string) string
 			leafCandidate = tagValue
 		}
 	}
-	leaf := convertToEnvVar(leafCandidate)
+	leaf := sourceutil.ConvertToEnvVar(leafCandidate)
 	return buildKey(segments, leaf)
 }
 
 func executeEnvScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
 	prefix := "app"
-	source := NewSource(prefix, ",")
+	source := NewSource(prefix, ",", mode)
 	for _, entry := range input {
 		key := buildEnvKeyFromPath(prefix, configuration, entry.Path)
 		t.Setenv(key, entry.Value)
 	}
-	t.Setenv(buildKey([]string{convertToEnvVar(prefix)}, "UNUSED"), "42")
-	return source.Load(configuration, mode)
+	t.Setenv(buildKey([]string{sourceutil.ConvertToEnvVar(prefix)}, "UNUSED"), "42")
+	return source.Load(configuration)
 }
 
 func TestEnvSource_Common_Scenarios(t *testing.T) {

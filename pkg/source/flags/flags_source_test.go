@@ -28,8 +28,8 @@ func TestFlagsSource_Primitives_Short_And_BoolForms(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := ExampleConfig{}
-	source := NewSource()
-	err := source.Load(&cfg, pkg.ModeOverride)
+	source := NewSource(pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 12, cfg.Sub.Value)
 	assert.Equal(t, 18, cfg.AdditionalValue)
@@ -49,8 +49,8 @@ func TestFlagsSource_Default_And_ModeFillMissing(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := ModeConfig{}
-	source := NewSource()
-	err := source.Load(&cfg, pkg.ModeOverride)
+	source := NewSource(pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.B)
 	assert.Equal(t, 10, cfg.A)
@@ -60,7 +60,8 @@ func TestFlagsSource_Default_And_ModeFillMissing(t *testing.T) {
 	x := 7
 	cfg2.B = &x
 	os.Args = append([]string{"app"}, "--a", "30", "--b", "40")
-	err = source.Load(&cfg2, pkg.ModeFillMissing)
+	source = NewSource(pkg.ModeFillMissing)
+	err = source.Load(&cfg2)
 	require.NoError(t, err)
 	require.NotNil(t, cfg2.B)
 	assert.Equal(t, 5, cfg2.A)
@@ -78,8 +79,8 @@ func TestFlagsSource_ByteSlice_And_Array(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := CastConfig{}
-	source := NewSource()
-	err := source.Load(&cfg, pkg.ModeOverride)
+	source := NewSource(pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(" a b "), cfg.ByteSlice)
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, cfg.ByteArray)
@@ -94,8 +95,8 @@ func TestFlagsSource_BoolExplicitFalse(t *testing.T) {
 		Debug bool `flag:"debug"`
 	}
 	cfg := BoolConfig{}
-	source := NewSource()
-	err := source.Load(&cfg, pkg.ModeOverride)
+	source := NewSource(pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, false, cfg.Debug)
 }

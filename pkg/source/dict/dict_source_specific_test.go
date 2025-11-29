@@ -32,9 +32,9 @@ func TestDictSource_KeyResolution_Table(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			source := NewSource(tc.input)
+			source := NewSource(tc.input, pkg.ModeOverride)
 			cfg := KeyResolutionConfig{}
-			err := source.Load(&cfg, pkg.ModeOverride)
+			err := source.Load(&cfg)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, cfg.SomeVar)
 		})
@@ -46,24 +46,24 @@ type CollectionsConfig struct {
 	Bytes [3]byte
 }
 
-func TestDictSource_Collections_AssignWhole_NoElementCast(t *testing.T) {
+func TestDictSource_Collections_StringParsing_Supported(t *testing.T) {
 	sourceGood := NewSource(map[string]any{
 		"Ints":  []int{1, 2, 3},
 		"Bytes": "xyz",
-	})
+	}, pkg.ModeOverride)
 	cfgGood := CollectionsConfig{}
-	err := sourceGood.Load(&cfgGood, pkg.ModeOverride)
+	err := sourceGood.Load(&cfgGood)
 	require.NoError(t, err)
 	assert.Equal(t, []int{1, 2, 3}, cfgGood.Ints)
 	assert.Equal(t, [3]byte{'x', 'y', 'z'}, cfgGood.Bytes)
 
-	sourceBad := NewSource(map[string]any{
+	sourceParsed := NewSource(map[string]any{
 		"Ints": "1,2,3",
-	})
-	cfgBad := CollectionsConfig{}
-	err = sourceBad.Load(&cfgBad, pkg.ModeOverride)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "field Ints")
+	}, pkg.ModeOverride)
+	cfgParsed := CollectionsConfig{}
+	err = sourceParsed.Load(&cfgParsed)
+	require.NoError(t, err)
+	assert.Equal(t, []int{1, 2, 3}, cfgParsed.Ints)
 }
 
 func TestDictSource_ConvertibleNumericTypes(t *testing.T) {
@@ -76,9 +76,9 @@ func TestDictSource_ConvertibleNumericTypes(t *testing.T) {
 		"I": float64(3.5),
 		"U": int64(7),
 		"F": int32(2),
-	})
+	}, pkg.ModeOverride)
 	cfg := ConvertibleConfig{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 3, cfg.I)
 	assert.Equal(t, uint64(7), cfg.U)
@@ -93,17 +93,17 @@ type NilAssignConfig struct {
 }
 
 func TestDictSource_NilAssignments(t *testing.T) {
-	sourceOverride := NewSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil})
+	sourceOverride := NewSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil}, pkg.ModeOverride)
 	cfgOverride := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, VP: 5, PP: intPointer(1)}
-	err := sourceOverride.Load(&cfgOverride, pkg.ModeOverride)
+	err := sourceOverride.Load(&cfgOverride)
 	require.Error(t, err)
 	assert.Nil(t, cfgOverride.SP)
 	assert.Nil(t, cfgOverride.MP)
 	assert.Nil(t, cfgOverride.PP)
 
-	sourceFill := NewSource(map[string]any{"SP": nil, "MP": nil, "PP": nil})
+	sourceFill := NewSource(map[string]any{"SP": nil, "MP": nil, "PP": nil}, pkg.ModeFillMissing)
 	cfgFill := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, PP: intPointer(2)}
-	err = sourceFill.Load(&cfgFill, pkg.ModeFillMissing)
+	err = sourceFill.Load(&cfgFill)
 	require.NoError(t, err)
 	assert.NotNil(t, cfgFill.SP)
 	assert.NotNil(t, cfgFill.MP)
@@ -111,19 +111,19 @@ func TestDictSource_NilAssignments(t *testing.T) {
 }
 
 func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
-	source := NewSource(map[string]any{"X": nil})
+	source := NewSource(map[string]any{"X": nil}, pkg.ModeOverride)
 	type Simple struct{ X int }
 	cfg := Simple{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "dict field X: unsupported type int")
 }
 
 func TestDictSource_MapToStruct_NonStructField_Ignored(t *testing.T) {
-	source := NewSource(map[string]any{"X": map[string]any{"A": 1}})
+	source := NewSource(map[string]any{"X": map[string]any{"A": 1}}, pkg.ModeOverride)
 	type Simple struct{ X int }
 	cfg := Simple{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 0, cfg.X)
 }
@@ -138,9 +138,9 @@ func TestDictSource_PointerAutoWrapUnwrap(t *testing.T) {
 	source := NewSource(map[string]any{
 		"IntValue":   p,
 		"IntPointer": 88,
-	})
+	}, pkg.ModeOverride)
 	cfg := PointerMixConfig{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.IntPointer)
 	assert.Equal(t, 77, cfg.IntValue)

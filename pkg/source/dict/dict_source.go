@@ -5,31 +5,40 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 type Source struct {
 	dict   map[string]any
-	caster typecast.TypeCaster
+	caster pkg.TypeCaster
+	mode   pkg.LoadMode
 }
 
-func NewSource(dict map[string]any) *Source {
+func NewSource(dict map[string]any, mode pkg.LoadMode) *Source {
 	if dict == nil {
 		dict = map[string]any{}
 	}
-	return &Source{dict: dict, caster: typecast.NewCaster()}
+	return &Source{dict: dict, caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode)}
 }
 
-func (source Source) Load(cfg any, mode pkg.LoadMode) error {
-	mode = sourceutil.DefaultMode(mode)
+func NewSourceWithCaster(dict map[string]any, mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+	if dict == nil {
+		dict = map[string]any{}
+	}
+	if caster == nil {
+		caster = pkg.NewTypeCaster()
+	}
+	return &Source{dict: dict, caster: caster, mode: sourceutil.DefaultMode(mode)}
+}
+
+func (source Source) Load(cfg any) error {
 	e, err := sourceutil.EnsureTargetStruct(cfg)
 	if err != nil {
 		return err
 	}
 	var errs []error
-	source.loadStruct(e, source.dict, mode, &errs, "")
+	source.loadStruct(e, source.dict, source.mode, &errs, "")
 	if len(errs) > 0 {
 		return pkg.NewAggregatedLoadFailedError(errors.Join(errs...))
 	}
@@ -50,23 +59,23 @@ func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, 
 		}
 		if m, isMap := asMapStringAny(raw); isMap {
 			if fv.Kind() == reflect.Struct {
-				source.loadStruct(fv, m, mode, errs, makePath(prefix, f.Name))
+				source.loadStruct(fv, m, mode, errs, sourceutil.MakePath(prefix, f.Name))
 				continue
 			}
 			if fv.Kind() == reflect.Ptr && fv.Type().Elem().Kind() == reflect.Struct {
 				if fv.IsNil() {
 					fv.Set(reflect.New(fv.Type().Elem()))
 				}
-				source.loadStruct(fv.Elem(), m, mode, errs, makePath(prefix, f.Name))
+				source.loadStruct(fv.Elem(), m, mode, errs, sourceutil.MakePath(prefix, f.Name))
 				continue
 			}
 			continue
 		}
-		if !source.shouldSetField(fv, mode) {
+		if !sourceutil.ShouldAssign(fv, true, mode, "") {
 			continue
 		}
 		if err := sourceutil.AssignFromAny(source.caster, fv, raw); err != nil {
-			*errs = append(*errs, pkg.NewDictFieldFailedError(makePath(prefix, f.Name), err))
+			*errs = append(*errs, pkg.NewDictFieldFailedError(sourceutil.MakePath(prefix, f.Name), err))
 		}
 	}
 }
@@ -75,7 +84,7 @@ func (source Source) lookupValue(dict map[string]any, fieldName string) (any, bo
 	if v, ok := dict[fieldName]; ok {
 		return v, true
 	}
-	upper := convertToUpperSnake(fieldName)
+	upper := sourceutil.ConvertToUpperSnake(fieldName)
 	lower := strings.ToLower(upper)
 	if v, ok := dict[lower]; ok {
 		return v, true
@@ -94,87 +103,6 @@ func asMapStringAny(v any) (map[string]any, bool) {
 	return m, ok
 }
 
-func (source Source) shouldSetField(fieldValue reflect.Value, mode pkg.LoadMode) bool {
-	if mode == pkg.ModeOverride {
-		return true
-	}
-	if mode == pkg.ModeFillMissing {
-		return fieldValue.IsZero()
-	}
-	return false
-}
+// removed local shouldSetField; using sourceutil.ShouldAssign for consistent mode semantics
 
-func makePath(prefix, name string) string {
-	if prefix == "" {
-		return name
-	}
-	return prefix + "." + name
-}
-
-func convertToUpperSnake(name string) string {
-	var b strings.Builder
-	b.Grow(len(name))
-	lastUnderscore := false
-	wroteAny := false
-	prevLowerOrDigit := false
-	prevUpper := false
-	runes := []rune(name)
-	for i := 0; i < len(runes); i++ {
-		r := runes[i]
-		if r == '-' || r == ' ' || r == '_' {
-			if !lastUnderscore && wroteAny {
-				b.WriteByte('_')
-				lastUnderscore = true
-			}
-			prevLowerOrDigit = false
-			prevUpper = false
-			continue
-		}
-		isUpper := r >= 'A' && r <= 'Z'
-		isLower := r >= 'a' && r <= 'z'
-		isDigit := r >= '0' && r <= '9'
-		if isUpper {
-			nextLower := false
-			if i+1 < len(runes) {
-				rr := runes[i+1]
-				nextLower = rr >= 'a' && rr <= 'z'
-			}
-			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r)
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = false
-			prevUpper = true
-			continue
-		}
-		if isLower {
-			b.WriteRune(r - ('a' - 'A'))
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = true
-			prevUpper = false
-			continue
-		}
-		if isDigit {
-			b.WriteRune(r)
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = true
-			prevUpper = false
-			continue
-		}
-		if !lastUnderscore && wroteAny {
-			b.WriteByte('_')
-			lastUnderscore = true
-		}
-		prevLowerOrDigit = false
-		prevUpper = false
-	}
-	s := b.String()
-	if len(s) > 0 && s[len(s)-1] == '_' {
-		s = s[:len(s)-1]
-	}
-	return s
-}
+// makePath proxy removed; use sourceutil.MakePath directly where needed

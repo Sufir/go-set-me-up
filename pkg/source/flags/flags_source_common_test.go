@@ -27,8 +27,8 @@ func executeFlagsScenario(t *testing.T, configuration any, mode pkg.LoadMode, in
 	}
 	old := osArgsSwap(args)
 	defer osArgsSwap(old)
-	source := NewSource()
-	return source.Load(configuration, mode)
+	source := NewSource(mode)
+	return source.Load(configuration)
 }
 
 func buildFlagNameFromPath(configuration any, path []string) string {

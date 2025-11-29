@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 func TestConvertToEnvironmentVariableName(t *testing.T) {
@@ -39,7 +40,7 @@ func TestConvertToEnvironmentVariableName(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.out, convertToEnvVar(tc.in))
+			require.Equal(t, tc.out, sourceutil.ConvertToEnvVar(tc.in))
 		})
 	}
 }
@@ -50,28 +51,28 @@ func TestBuildKey(t *testing.T) {
 	assert.Equal(t, "APP_SERVER_PORT", buildKey([]string{"APP", "SERVER"}, "PORT"))
 }
 
-func TestSplitIntoTokens(t *testing.T) {
-	assert.Equal(t, []string{"1", "2", "3"}, splitIntoTokens("1,2,3", ","))
-	assert.Equal(t, []string{"abc"}, splitIntoTokens("abc", ""))
+func TestNormalizeDelimited(t *testing.T) {
+	assert.Equal(t, "1,2,3", sourceutil.NormalizeDelimited("1,2,3", ","))
+	assert.Equal(t, "abc", sourceutil.NormalizeDelimited("abc", ""))
 }
 
 func TestShouldSetField(t *testing.T) {
 	var x int
 	vx := reflect.ValueOf(&x).Elem()
-	assert.True(t, (Source{}).shouldSetField(vx, true, pkg.ModeOverride, ""))
-	assert.True(t, (Source{}).shouldSetField(vx, false, pkg.ModeOverride, "10"))
-	assert.False(t, (Source{}).shouldSetField(vx, false, pkg.ModeOverride, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, true, pkg.ModeOverride, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, false, pkg.ModeOverride, "10"))
+	assert.False(t, sourceutil.ShouldAssign(vx, false, pkg.ModeOverride, ""))
 	x = 5
 	vx = reflect.ValueOf(&x).Elem()
-	assert.False(t, (Source{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
+	assert.False(t, sourceutil.ShouldAssign(vx, true, pkg.ModeFillMissing, ""))
 	x = 0
 	vx = reflect.ValueOf(&x).Elem()
-	assert.True(t, (Source{}).shouldSetField(vx, true, pkg.ModeFillMissing, ""))
-	assert.True(t, (Source{}).shouldSetField(vx, false, pkg.ModeFillMissing, "7"))
+	assert.True(t, sourceutil.ShouldAssign(vx, true, pkg.ModeFillMissing, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, false, pkg.ModeFillMissing, "7"))
 }
 
 func TestSetFieldValue(t *testing.T) {
-	source := NewSource("app", ",")
+	source := NewSource("app", ",", pkg.ModeOverride)
 	type Holder struct {
 		IntSlice          []int `envDelim:":"`
 		ByteSlice         []byte
@@ -85,29 +86,31 @@ func TestSetFieldValue(t *testing.T) {
 
 	field := hv.FieldByName("IntSlice")
 
-	require.Error(t, source.setFieldValue(field, "1:2:3"))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, sourceutil.NormalizeDelimited("1:2:3", ":")))
+	assert.Equal(t, []int{1, 2, 3}, h.IntSlice)
 
 	field = hv.FieldByName("IntArray")
 
-	require.Error(t, source.setFieldValue(field, "10,20,30,40"))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, sourceutil.NormalizeDelimited("10,20,30,40", ",")))
+	assert.Equal(t, [3]int{10, 20, 30}, h.IntArray)
 
 	field = hv.FieldByName("ByteSlice")
 
-	require.NoError(t, source.setFieldValue(field, " a b "))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, " a b "))
 	assert.Equal(t, []byte(" a b "), h.ByteSlice)
 
 	field = hv.FieldByName("BytesArray")
 
-	require.NoError(t, source.setFieldValue(field, "abcde"))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, "abcde"))
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 'd', 'e'}, h.BytesArray)
 
 	field = hv.FieldByName("BytesArrayNoDelim")
 
-	require.NoError(t, source.setFieldValue(field, "abc"))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, "abc"))
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, h.BytesArrayNoDelim)
 
 	field = hv.FieldByName("IntValue")
-	require.NoError(t, source.setFieldValue(field, "42"))
+	require.NoError(t, sourceutil.AssignFromString(source.caster, field, "42"))
 	assert.Equal(t, 42, h.IntValue)
 }
 
@@ -120,7 +123,7 @@ func TestGetEnv_ReadsSetVariables(t *testing.T) {
 }
 
 func TestLoadStruct_SetsOnlyTaggedFields(t *testing.T) {
-	source := NewSource("APP", ",")
+	source := NewSource("APP", ",", pkg.ModeOverride)
 	type Sub struct {
 		Value int `env:"VALUE"`
 	}

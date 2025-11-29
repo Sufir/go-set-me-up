@@ -29,8 +29,8 @@ func buildDictMapFromInput(input []testcommon.DataEntry) map[string]any {
 func executeDictScenario(_ *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
 	inputMap := buildDictMapFromInput(input)
 	inputMap["UNUSED"] = "42"
-	source := NewSource(inputMap)
-	return source.Load(configuration, mode)
+	source := NewSource(inputMap, mode)
+	return source.Load(configuration)
 }
 
 func TestDictSource_Common_Scenarios(t *testing.T) {

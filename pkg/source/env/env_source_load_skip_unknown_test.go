@@ -18,12 +18,12 @@ type UnusedConfig struct {
 }
 
 func TestEnvSource_Load_SkipFieldWithDashTag(t *testing.T) {
-	source := NewSource("app", ",")
+	source := NewSource("app", ",", pkg.ModeOverride)
 
 	t.Setenv("APP_VALUE", "123")
 
 	cfg := SkipConfig{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 0, cfg.Value)
 }

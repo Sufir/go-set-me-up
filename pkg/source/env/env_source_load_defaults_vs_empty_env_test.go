@@ -18,14 +18,14 @@ type DefaultsConflictConfig struct {
 }
 
 func TestEnvSource_Load_Override_EmptyEnvWinsOverDefault(t *testing.T) {
-	source := NewSource("app", ",")
+	source := NewSource("app", ",", pkg.ModeOverride)
 
 	t.Setenv("APP_S", "")
 	t.Setenv("APP_I", "")
 	t.Setenv("APP_B", "")
 
 	cfg := DefaultsConflictConfig{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.Error(t, err)
 
 	var parseErr typecast.ErrParseFailed
@@ -36,14 +36,14 @@ func TestEnvSource_Load_Override_EmptyEnvWinsOverDefault(t *testing.T) {
 }
 
 func TestEnvSource_Load_FillMissing_EmptyEnvWinsOverDefault(t *testing.T) {
-	source := NewSource("app", ",")
+	source := NewSource("app", ",", pkg.ModeFillMissing)
 
 	t.Setenv("APP_S", "")
 	t.Setenv("APP_I", "")
 	t.Setenv("APP_B", "")
 
 	cfg := DefaultsConflictConfig{}
-	err := source.Load(&cfg, pkg.ModeFillMissing)
+	err := source.Load(&cfg)
 	require.Error(t, err)
 
 	var parseErr typecast.ErrParseFailed
@@ -54,10 +54,10 @@ func TestEnvSource_Load_FillMissing_EmptyEnvWinsOverDefault(t *testing.T) {
 }
 
 func TestEnvSource_Load_DefaultsUsedWhenEnvMissing(t *testing.T) {
-	source := NewSource("app", ",")
+	source := NewSource("app", ",", pkg.ModeOverride)
 
 	cfg := DefaultsConflictConfig{}
-	err := source.Load(&cfg, pkg.ModeOverride)
+	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "fallback", cfg.S)
 	assert.Equal(t, 7, cfg.I)
