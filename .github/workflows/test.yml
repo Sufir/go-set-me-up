@@ -17,6 +17,7 @@ jobs:
   tests:
     name: Run tests and publish coverage artifact
     runs-on: ubuntu-latest
+    environment: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,116 +83,16 @@ jobs:
           go tool cover -html=coverage.out -o ./.pages/index.html
 
       - name: Upload Pages artifact
+        if: >
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
           path: ./.pages
 
-      - name: Checkout base branch
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.base_ref }}
-          path: base
-
-      - name: Run base tests with coverage
-        if: github.event_name == 'pull_request'
-        working-directory: base
-        run: |
-          set -e
-          go mod download
-          go test ./... -covermode=atomic -coverprofile=coverage.out
-
-      - name: Compute base coverage value
-        if: github.event_name == 'pull_request'
-        id: basecov
-        working-directory: base
-        run: |
-          set -e
-          if [ ! -s coverage.out ]; then
-            echo "coverage.out not found or empty" >&2
-            exit 1
-          fi
-          pct=$(go tool cover -func=coverage.out | awk '/^[[:space:]]*total:/ {print $NF}' | tr -d '%')
-          if [ -z "$pct" ]; then
-            echo "Failed to parse total coverage, dumping cover func output for debug:" >&2
-            go tool cover -func=coverage.out || true
-            pct="0"
-          fi
-          echo "pct=$pct" >> "$GITHUB_OUTPUT"
-
-      - name: Compute coverage delta
-        if: github.event_name == 'pull_request'
-        id: covdelta
-        run: |
-          set -e
-          pct="${{ steps.cov.outputs.pct }}"
-          base="${{ steps.basecov.outputs.pct }}"
-          if [ -z "$pct" ] || [ -z "$base" ]; then
-            echo "delta=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          delta=$(awk "BEGIN {printf \"%.2f\", $pct - $base}")
-          sign=""
-          awk "BEGIN {exit !($delta > 0)}" && sign="+" || true
-          echo "delta=$sign$delta" >> "$GITHUB_OUTPUT"
-
-      - name: Publish coverage summary
-        if: github.event_name == 'pull_request'
-        run: |
-          pct="${{ steps.cov.outputs.pct }}"
-          base="${{ steps.basecov.outputs.pct }}"
-          delta="${{ steps.covdelta.outputs.delta }}"
-          {
-            echo "Coverage: ${pct}%"
-            echo "Base: ${base}%"
-            if [ -n "$delta" ]; then echo "Δ: ${delta}%"; fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-
-      - name: Write PR coverage artifact
-        if: github.event_name == 'pull_request'
-        run: |
-          pct="${{ steps.cov.outputs.pct }}"
-          base="${{ steps.basecov.outputs.pct }}"
-          delta="${{ steps.covdelta.outputs.delta }}"
-          cat > coverage.json <<JSON
-          {"pct":"$pct","base":"$base","delta":"$delta"}
-          JSON
-
-      - name: Upload PR coverage artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-coverage
-          path: coverage.json
-          retention-days: 7
-
-  deploy_coverage:
-    needs: tests
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-    steps:
-      - name: Evaluate deploy conditions
-        id: eval
-        run: |
-          set -e
-          should=false
-          if [ "${{ github.event_name }}" = "push" ]; then
-            case "${{ github.ref }}" in
-              refs/heads/main|refs/heads/master|refs/heads/dev) should=true ;;
-            esac
-          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.merged }}" = "true" ] && [ "${{ github.base_ref }}" = "dev" ]; then
-            should=true
-          fi
-          echo "should_deploy=$should" >> "$GITHUB_OUTPUT"
-
-      - name: Skip deploy on this event
-        if: steps.eval.outputs.should_deploy != 'true'
-        run: echo "Deployment skipped for event=${{ github.event_name }} ref=${{ github.ref }} base=${{ github.base_ref }}"
-
       - name: Deploy to GitHub Pages
-        if: steps.eval.outputs.should_deploy == 'true'
-        id: deployment
+        if: >
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
         uses: actions/deploy-pages@v4
