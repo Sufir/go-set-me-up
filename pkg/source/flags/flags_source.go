@@ -7,21 +7,45 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 type Source struct {
-	caster typecast.TypeCaster
+	caster    pkg.TypeCaster
+	delimiter string
+	mode      pkg.LoadMode
 }
 
-func NewSource() *Source {
-	return &Source{caster: typecast.NewCaster()}
+func NewSource(mode pkg.LoadMode) *Source {
+	return &Source{caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: ","}
 }
 
-func (source Source) Load(cfg any, mode pkg.LoadMode) error {
-	mode = sourceutil.DefaultMode(mode)
+func NewSourceWithCaster(mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+	if caster == nil {
+		caster = pkg.NewTypeCaster()
+	}
+	return &Source{caster: caster, mode: sourceutil.DefaultMode(mode), delimiter: ","}
+}
+
+func NewSourceWithDelimiter(mode pkg.LoadMode, delimiter string) *Source {
+	if delimiter == "" {
+		delimiter = ","
+	}
+	return &Source{caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: delimiter}
+}
+
+func NewSourceWithCasterAndDelimiter(mode pkg.LoadMode, delimiter string, caster pkg.TypeCaster) *Source {
+	if delimiter == "" {
+		delimiter = ","
+	}
+	if caster == nil {
+		caster = pkg.NewTypeCaster()
+	}
+	return &Source{caster: caster, mode: sourceutil.DefaultMode(mode), delimiter: delimiter}
+}
+
+func (source Source) Load(cfg any) error {
 	elem, err := sourceutil.EnsureTargetStruct(cfg)
 	if err != nil {
 		return err
@@ -29,7 +53,7 @@ func (source Source) Load(cfg any, mode pkg.LoadMode) error {
 
 	argsMap := parseArguments(os.Args[1:])
 	var collected []error
-	source.loadStruct(elem, argsMap, mode, &collected)
+	source.loadStruct(elem, argsMap, source.mode, &collected)
 	if len(collected) > 0 {
 		return pkg.NewAggregatedLoadFailedError(errors.Join(collected...))
 	}
@@ -158,7 +182,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 				if usedShort {
 					name = tagShort
 				}
-				parseErr := typecast.ErrParseFailed{Type: t, Value: raw, Cause: typecast.ErrEmptyValue}
+				parseErr := pkg.ErrParseFailed{Type: t, Value: raw, Cause: pkg.ErrEmptyValue}
 				*errs = append(*errs, fmt.Errorf("%s=%s: %w", name, raw, parseErr))
 				return true
 			}
@@ -168,6 +192,17 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 			return true
 		}
 		raw = tagDefault
+	}
+	t := fieldInfo.Type
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice || (t.Kind() == reflect.Array && t.Elem().Kind() == reflect.Int) {
+		elemKind := t.Elem().Kind()
+		if elemKind == reflect.String || elemKind == reflect.Int {
+			delim := sourceutil.ResolveDelimiter(fieldInfo.Tag.Get("flagDelim"), source.delimiter)
+			raw = sourceutil.NormalizeDelimited(raw, delim)
+		}
 	}
 	if err := sourceutil.AssignFromString(source.caster, fieldValue, raw); err != nil {
 		name := tagFlag

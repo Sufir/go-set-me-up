@@ -1,0 +1,53 @@
+name: Coverage
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Compose availability
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Run tests and generate coverage inside Docker
+        run: |
+          docker compose run --rm dev bash -lc '
+            go test -v ./... -covermode=count -coverprofile=coverage.out && 
+            go tool cover -func=coverage.out -o=coverage.out
+          '
+
+      - name: Generate Coverage Badge
+        uses: tj-actions/coverage-badge-go@v3
+        with:
+          filename: coverage.out
+          target: README.md
+          link: https://github.com/${{ github.repository }}/actions/workflows/coverage.yml
+
+      - name: Verify Changed files
+        id: verify-changed-files
+        uses: tj-actions/verify-changed-files@v16
+        with:
+          files: README.md
+
+      - name: Commit updated README with badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "chore: Updated coverage badge."
+          git push
