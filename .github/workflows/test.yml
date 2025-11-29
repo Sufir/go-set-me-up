@@ -1,30 +1,103 @@
-name: Test
+name: Tests and Coverage
 
 on:
-  pull_request:
   push:
-    branches: [ "main", "master" ]
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   tests:
-    name: Run tests
+    name: Run tests and publish coverage artifact
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
-      - name: Run tests with race detector
-        # Race detector helps catch concurrency issues early
-        run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
+      - name: Download modules
+        run: go mod download
 
-      - name: Upload coverage to GitHub summary
-        # Visible coverage summary in PR UI
+      - name: Run tests with coverage
         run: |
-          COVER=$(go tool cover -func coverage.out | grep total | awk '{print $3}')
-          echo "### Test Coverage: $COVER" >> $GITHUB_STEP_SUMMARY
+          set -e
+          go test ./... -covermode=atomic -coverprofile=coverage.out
+
+      - name: Compute coverage value
+        id: cov
+        run: |
+          set -e
+          if [ ! -s coverage.out ]; then
+            echo "coverage.out not found or empty" >&2
+            exit 1
+          fi
+          pct=$(go tool cover -func=coverage.out | awk '/^[[:space:]]*total:/ {print $NF}' | tr -d '%')
+          if [ -z "$pct" ]; then
+            echo "Failed to parse total coverage, dumping cover func output for debug:" >&2
+            go tool cover -func=coverage.out || true
+            pct="0"
+          fi
+          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+
+          val=${pct%.*}
+          if [ -z "$val" ]; then val=0; fi
+          if   [ "$val" -ge 80 ]; then color=brightgreen
+          elif [ "$val" -ge 70 ]; then color=green
+          elif [ "$val" -ge 60 ]; then color=yellowgreen
+          elif [ "$val" -ge 50 ]; then color=yellow
+          else color=red
+          fi
+          echo "color=$color" >> "$GITHUB_OUTPUT"
+
+      - name: Write Shields endpoint JSON
+        run: |
+          pct="${{ steps.cov.outputs.pct }}"
+          color="${{ steps.cov.outputs.color }}"
+          mkdir -p ./.pages
+          cat <<EOF > ./.pages/coverage-badge.json
+          {
+            "schemaVersion": 1,
+            "label": "coverage",
+            "message": "${pct}%",
+            "color": "${color}",
+            "cacheSeconds": 60
+          }
+          EOF
+
+      - name: Generate HTML coverage report
+        run: |
+          mkdir -p ./.pages
+          go tool cover -html=coverage.out -o ./.pages/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: ./.pages
+
+  deploy_coverage:
+    if: >
+      (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
+      ) || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.base_ref == 'dev')
+    needs: tests
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
