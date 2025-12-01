@@ -5,23 +5,22 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"unicode"
 
-	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
 )
 
 type Source struct {
-	caster    typecast.TypeCaster
+	caster    pkg.TypeCaster
 	prefix    string
 	delimiter string
+	mode      pkg.LoadMode
 }
 
-func NewSource(prefix string, delimiter string) *Source {
+func NewSource(prefix string, delimiter string, mode pkg.LoadMode) *Source {
 	normalized := ""
 	if prefix != "" {
-		normalized = convertToEnvVar(prefix)
+		normalized = sourceutil.ConvertToEnvVar(prefix)
 	}
 
 	if delimiter == "" {
@@ -31,12 +30,31 @@ func NewSource(prefix string, delimiter string) *Source {
 	return &Source{
 		prefix:    normalized,
 		delimiter: delimiter,
-		caster:    typecast.NewCaster(),
+		caster:    pkg.NewTypeCaster(),
+		mode:      sourceutil.DefaultMode(mode),
 	}
 }
 
-func (source Source) Load(cfg any, mode pkg.LoadMode) error {
-	mode = sourceutil.DefaultMode(mode)
+func NewSourceWithCaster(prefix string, delimiter string, mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+	normalized := ""
+	if prefix != "" {
+		normalized = sourceutil.ConvertToEnvVar(prefix)
+	}
+	if delimiter == "" {
+		delimiter = ","
+	}
+	if caster == nil {
+		caster = pkg.NewTypeCaster()
+	}
+	return &Source{
+		prefix:    normalized,
+		delimiter: delimiter,
+		caster:    caster,
+		mode:      sourceutil.DefaultMode(mode),
+	}
+}
+
+func (source Source) Load(cfg any) error {
 	elem, err := sourceutil.EnsureTargetStruct(cfg)
 	if err != nil {
 		return err
@@ -49,7 +67,7 @@ func (source Source) Load(cfg any, mode pkg.LoadMode) error {
 		segments = append(segments, source.prefix)
 	}
 
-	source.loadStruct(elem, segments, environment, mode, &collected, "")
+	source.loadStruct(elem, segments, environment, source.mode, &collected, "")
 
 	if len(collected) > 0 {
 		return pkg.NewAggregatedLoadFailedError(errors.Join(collected...))
@@ -92,7 +110,7 @@ func (source Source) loadStruct(structValue reflect.Value, segments []string, en
 		if !ok {
 			continue
 		}
-		source.loadStruct(nestedValue, nextSegments, env, mode, errs, makePath(prefix, fieldInfo.Name))
+		source.loadStruct(nestedValue, nextSegments, env, mode, errs, sourceutil.MakePath(prefix, fieldInfo.Name))
 	}
 }
 
@@ -108,7 +126,7 @@ func (source Source) segmentForField(fieldInfo reflect.StructField) string {
 	if segmentName == "" {
 		segmentName = fieldInfo.Name
 	}
-	return convertToEnvVar(segmentName)
+	return sourceutil.ConvertToEnvVar(segmentName)
 }
 
 func (source Source) resolveNestedStruct(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string) (reflect.Value, []string, bool) {
@@ -138,7 +156,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 	if tagEnv == "" {
 		return false
 	}
-	leaf := convertToEnvVar(tagEnv)
+	leaf := sourceutil.ConvertToEnvVar(tagEnv)
 	key := buildKey(segments, leaf)
 	val, ok := env[key]
 	defaultValue := fieldInfo.Tag.Get("envDefault")
@@ -154,8 +172,19 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 		}
 		setValue = defaultValue
 	}
+	t := fieldInfo.Type
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice || (t.Kind() == reflect.Array && t.Elem().Kind() == reflect.Int) {
+		elemKind := t.Elem().Kind()
+		if elemKind == reflect.String || elemKind == reflect.Int {
+			delim := sourceutil.ResolveDelimiter(fieldInfo.Tag.Get("envDelim"), source.delimiter)
+			setValue = sourceutil.NormalizeDelimited(setValue, delim)
+		}
+	}
 	if err := sourceutil.AssignFromString(source.caster, fieldValue, setValue); err != nil {
-		path := makePath(prefix, fieldInfo.Name)
+		path := sourceutil.MakePath(prefix, fieldInfo.Name)
 		*errs = append(*errs, pkg.NewEnvFieldFailedError(key, setValue, path, err))
 	}
 	return true
@@ -173,174 +202,4 @@ func buildKey(segments []string, leaf string) string {
 	return strings.Join(append(segments, leaf), "_")
 }
 
-func makePath(prefix, name string) string {
-	if prefix == "" {
-		return name
-	}
-	return prefix + "." + name
-}
-
-func (source Source) shouldSetField(fieldValue reflect.Value, envPresent bool, mode pkg.LoadMode, defaultValue string) bool {
-	if mode == pkg.ModeOverride {
-		if envPresent {
-			return true
-		}
-
-		if defaultValue != "" && fieldValue.IsZero() {
-			return true
-		}
-
-		return false
-	}
-
-	if mode == pkg.ModeFillMissing {
-		if !fieldValue.IsZero() {
-			return false
-		}
-
-		if envPresent || defaultValue != "" {
-			return true
-		}
-
-		return false
-	}
-
-	return false
-}
-
-func splitIntoTokens(value string, delimiter string) []string {
-	if delimiter == "" {
-		return []string{value}
-	}
-
-	return strings.Split(value, delimiter)
-}
-
-func (source Source) setFieldValue(field reflect.Value, raw string) error {
-	t := field.Type()
-
-	if t.Kind() == reflect.Ptr {
-		v, err := source.caster.Cast(raw, t.Elem())
-		if err != nil {
-			return err
-		}
-		if v.Type() == t {
-			field.Set(v)
-			return nil
-		}
-
-		if v.Kind() == reflect.Ptr && v.Type().Elem() == t.Elem() {
-			field.Set(v)
-			return nil
-		}
-
-		if v.Type() == t.Elem() {
-			ptr := reflect.New(t.Elem())
-			ptr.Elem().Set(v)
-			field.Set(ptr)
-			return nil
-		}
-
-		if v.Type().ConvertibleTo(t.Elem()) {
-			ptr := reflect.New(t.Elem())
-			ptr.Elem().Set(v.Convert(t.Elem()))
-			field.Set(ptr)
-			return nil
-		}
-
-		return typecast.ErrUnsupportedType{Type: t}
-	}
-
-	v, err := source.caster.Cast(raw, t)
-	if err != nil {
-		return err
-	}
-	if v.Type() == t {
-		field.Set(v)
-		return nil
-	}
-	if v.Kind() == reflect.Ptr && v.Type().Elem() == t {
-		field.Set(v.Elem())
-		return nil
-	}
-
-	return typecast.ErrUnsupportedType{Type: t}
-}
-
-func convertToEnvVar(name string) string {
-	var builder strings.Builder
-	builder.Grow(len(name))
-
-	lastUnderscore := false
-	wroteAny := false
-	prevLowerOrDigit := false
-	prevUpper := false
-
-	runes := []rune(name)
-	for i := 0; i < len(runes); i++ {
-		r := runes[i]
-
-		if r == '-' || r == ' ' {
-			if !lastUnderscore && wroteAny {
-				builder.WriteByte('_')
-				lastUnderscore = true
-			}
-			prevLowerOrDigit = false
-			prevUpper = false
-			continue
-		}
-
-		isUpper := unicode.IsUpper(r)
-		isLower := unicode.IsLower(r)
-		isDigit := unicode.IsDigit(r)
-
-		if isUpper {
-			nextLower := false
-			if i+1 < len(runes) {
-				rr := runes[i+1]
-				nextLower = unicode.IsLower(rr)
-			}
-			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
-				builder.WriteByte('_')
-			}
-			builder.WriteRune(r)
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = false
-			prevUpper = true
-			continue
-		}
-
-		if isLower {
-			builder.WriteRune(unicode.ToUpper(r))
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = true
-			prevUpper = false
-			continue
-		}
-
-		if isDigit {
-			builder.WriteRune(r)
-			lastUnderscore = false
-			wroteAny = true
-			prevLowerOrDigit = true
-			prevUpper = false
-			continue
-		}
-
-		if !lastUnderscore && wroteAny {
-			builder.WriteByte('_')
-			lastUnderscore = true
-		}
-		prevLowerOrDigit = false
-		prevUpper = false
-	}
-
-	s := builder.String()
-	if len(s) > 0 && s[len(s)-1] == '_' {
-		s = s[:len(s)-1]
-	}
-
-	return s
-}
+// convertToEnvVar proxy removed; use sourceutil.ConvertToEnvVar directly

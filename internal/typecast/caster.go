@@ -23,6 +23,9 @@ type TypeCaster interface {
 func NewCaster(types ...OptionType) TypeCaster {
 	options := []OptionType{
 		TextUnmarshalerOptionType{},
+		StringSliceOptionType{},
+		IntSliceOptionType{},
+		IntArrayOptionType{},
 		ByteArrayOptionType{},
 		StringOptionType{},
 		ByteSliceOptionType{},

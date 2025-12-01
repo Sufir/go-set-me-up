@@ -349,16 +349,14 @@ func BuildAggregatedErrorScenarios() []Scenario {
 			CreateConfig: func() any { return &AggregationConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "x"},
-				{Path: []string{"B"}, Value: "1,2,3"},
+				{Path: []string{"B"}, Value: "a,b,c"},
 				{Path: []string{"C"}, Value: ""},
 				{Path: []string{"Outer", "Inner", "Value"}, Value: "y"},
 			},
 			AssertError: func(t *testing.T, err error) {
 				require.Error(t, err)
 				var parseErr typecast.ErrParseFailed
-				var unsupportedErr typecast.ErrUnsupportedType
 				assert.True(t, errors.As(err, &parseErr))
-				assert.True(t, errors.As(err, &unsupportedErr))
 			},
 			AssertResult: func(_ *testing.T, cfg any) {
 				_ = cfg

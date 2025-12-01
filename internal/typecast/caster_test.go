@@ -211,7 +211,7 @@ func TestCaster_TextUnmarshaler_PointerAndValue(t *testing.T) {
 
 func TestCaster_UnsupportedType(t *testing.T) {
 	typeCaster := NewCaster()
-	targetType := reflect.TypeOf([]int(nil))
+	targetType := reflect.TypeOf([]float64(nil))
 	obtainedValue, obtainedError := typeCaster.Cast("123", targetType)
 	require.Error(t, obtainedError)
 	assert.False(t, obtainedValue.IsValid())

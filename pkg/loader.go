@@ -12,6 +12,10 @@ const (
 	ModeFillMissing
 )
 
+type Source interface {
+	Load(target any) error
+}
+
 type Loader struct {
 	sources []Source
 }
@@ -20,14 +24,10 @@ func NewLoader(sources ...Source) *Loader {
 	return &Loader{sources: sources}
 }
 
-func (l *Loader) Load(cfg any, mode LoadMode) error {
-	if mode == 0 {
-		mode = ModeOverride
-	}
-
+func (l *Loader) Load(cfg any) error {
 	var collectedErrors []error
 	for index, source := range l.sources {
-		if loadError := source.Load(cfg, mode); loadError != nil {
+		if loadError := source.Load(cfg); loadError != nil {
 			wrappedError := NewLoaderSourceFailedError(index, fmt.Sprintf("%T", source), loadError)
 			collectedErrors = append(collectedErrors, wrappedError)
 		}

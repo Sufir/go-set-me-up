@@ -2,11 +2,15 @@ package sourceutil
 
 import (
 	"reflect"
+	"strings"
+	"unicode"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
 	"github.com/Sufir/go-set-me-up/pkg"
 )
 
+// DefaultMode returns the effective load mode.
+// mode: requested mode; when zero, ModeOverride is used as the default.
 func DefaultMode(mode pkg.LoadMode) pkg.LoadMode {
 	if mode == 0 {
 		return pkg.ModeOverride
@@ -15,6 +19,9 @@ func DefaultMode(mode pkg.LoadMode) pkg.LoadMode {
 	return mode
 }
 
+// EnsureTargetStruct verifies that configuration is a non-nil pointer to a struct
+// and returns the underlying struct value.
+// configuration: configuration object that must be a pointer to a struct.
 func EnsureTargetStruct(configuration any) (reflect.Value, error) {
 	value := reflect.ValueOf(configuration)
 	if value.Kind() != reflect.Ptr || value.IsNil() {
@@ -29,6 +36,12 @@ func EnsureTargetStruct(configuration any) (reflect.Value, error) {
 	return elem, nil
 }
 
+// ShouldAssign decides whether a destination field should be assigned based on
+// the presence of a value, the load mode, and a non-empty default.
+// fieldValue: destination field
+// present: whether the source contains a value for the field
+// mode: load mode controlling override/fill semantics
+// defaultValue: non-empty default value used when source does not contain a value
 func ShouldAssign(fieldValue reflect.Value, present bool, mode pkg.LoadMode, defaultValue string) bool {
 	if mode == pkg.ModeOverride {
 		if present {
@@ -53,67 +66,61 @@ func ShouldAssign(fieldValue reflect.Value, present bool, mode pkg.LoadMode, def
 	return false
 }
 
-func AssignFromString(caster typecast.TypeCaster, field reflect.Value, raw string) error {
+// AssignFromString converts a raw string to the field's type using the provided TypeCaster
+// and assigns the result into the destination field.
+// caster: TypeCaster used for string-to-type conversion
+// field: destination field to set
+// raw: input string value
+func AssignFromString(caster pkg.TypeCaster, field reflect.Value, raw string) error {
 	t := field.Type()
 	if t.Kind() == reflect.Ptr {
 		v, err := caster.Cast(raw, t.Elem())
 		if err != nil {
 			return err
 		}
-
-		if v.Type() == t {
-			field.Set(v)
+		if assignExactType(field, v) {
 			return nil
 		}
-
 		if v.Kind() == reflect.Ptr && v.Type().Elem() == t.Elem() {
 			field.Set(v)
 			return nil
 		}
-
-		if v.Type() == t.Elem() {
-			ptr := reflect.New(t.Elem())
-			ptr.Elem().Set(v)
-			field.Set(ptr)
+		if wrapPointer(field, v) {
 			return nil
 		}
-
-		if v.Type().ConvertibleTo(t.Elem()) {
-			ptr := reflect.New(t.Elem())
-			ptr.Elem().Set(v.Convert(t.Elem()))
-			field.Set(ptr)
-			return nil
-		}
-
-		return typecast.ErrUnsupportedType{Type: t}
+		return pkg.ErrUnsupportedType{Type: t}
 	}
 
 	v, err := caster.Cast(raw, t)
 	if err != nil {
 		return err
 	}
-
-	if v.Type() == t {
-		field.Set(v)
+	if assignExactType(field, v) {
 		return nil
 	}
-
-	if v.Kind() == reflect.Ptr && v.Type().Elem() == t {
-		field.Set(v.Elem())
+	if unwrapPointerExact(field, v) {
 		return nil
 	}
-
-	return typecast.ErrUnsupportedType{Type: t}
+	if assignConvertible(field, v) {
+		return nil
+	}
+	return pkg.ErrUnsupportedType{Type: t}
 }
 
-func AssignFromAny(caster typecast.TypeCaster, field reflect.Value, raw any) error {
+// AssignFromAny assigns an arbitrary typed value into the destination field, performing
+// pointer wrapping/unwrapping and type conversions where supported. String inputs use
+// the provided TypeCaster for conversion.
+// caster: TypeCaster used when converting from string values
+// field: destination field to set
+// raw: input value (may be string, pointer, nil, or concrete type)
+func AssignFromAny(caster pkg.TypeCaster, field reflect.Value, raw any) error {
 	t := field.Type()
 	if raw == nil {
 		if isNilAssignableKind(t.Kind()) {
 			field.Set(reflect.Zero(t))
 			return nil
 		}
-		return typecast.ErrUnsupportedType{Type: t}
+		return pkg.ErrUnsupportedType{Type: t}
 	}
 
 	rv := reflect.ValueOf(raw)
@@ -124,46 +131,26 @@ func AssignFromAny(caster typecast.TypeCaster, field reflect.Value, raw any) err
 			if err != nil {
 				return err
 			}
-			if v.Type() == t {
-				field.Set(v)
+			if assignExactType(field, v) {
 				return nil
 			}
 			if v.Kind() == reflect.Ptr && v.Type().Elem() == elem {
 				field.Set(v)
 				return nil
 			}
-			if v.Type() == elem {
-				p := reflect.New(elem)
-				p.Elem().Set(v)
-				field.Set(p)
+			if wrapPointer(field, v) {
 				return nil
 			}
-			if v.Type().ConvertibleTo(elem) {
-				p := reflect.New(elem)
-				p.Elem().Set(v.Convert(elem))
-				field.Set(p)
-				return nil
-			}
-			return typecast.ErrUnsupportedType{Type: t}
+			return pkg.ErrUnsupportedType{Type: t}
 		}
-		if rv.Type() == t {
-			field.Set(rv)
+		if assignExactType(field, rv) {
 			return nil
 		}
 		if rv.Kind() == reflect.Ptr && rv.Type().Elem() == elem {
 			field.Set(rv)
 			return nil
 		}
-		if rv.Type() == elem {
-			p := reflect.New(elem)
-			p.Elem().Set(rv)
-			field.Set(p)
-			return nil
-		}
-		if rv.Type().ConvertibleTo(elem) {
-			p := reflect.New(elem)
-			p.Elem().Set(rv.Convert(elem))
-			field.Set(p)
+		if wrapPointer(field, rv) {
 			return nil
 		}
 		return typecast.ErrUnsupportedType{Type: t}
@@ -174,50 +161,102 @@ func AssignFromAny(caster typecast.TypeCaster, field reflect.Value, raw any) err
 		if err != nil {
 			return err
 		}
-		if v.Type() == t {
-			field.Set(v)
+		if assignExactType(field, v) {
 			return nil
 		}
-		if v.Kind() == reflect.Ptr && v.Type().Elem() == t {
-			field.Set(v.Elem())
+		if unwrapPointer(field, v) {
 			return nil
 		}
-		if v.Type().ConvertibleTo(t) {
-			field.Set(v.Convert(t))
+		if assignConvertible(field, v) {
 			return nil
 		}
-		return typecast.ErrUnsupportedType{Type: t}
-	}
-
-	if rv.Kind() == reflect.Ptr {
-		if rv.IsNil() {
-			if isNilAssignableKind(t.Kind()) {
-				field.Set(reflect.Zero(t))
-				return nil
-			}
-			return typecast.ErrUnsupportedType{Type: t}
-		}
-		if rv.Type().Elem() == t {
-			field.Set(rv.Elem())
-			return nil
-		}
-		if rv.Elem().Type().ConvertibleTo(t) {
-			field.Set(rv.Elem().Convert(t))
-			return nil
-		}
+		return pkg.ErrUnsupportedType{Type: t}
 	}
 
 	if rv.Type() == t {
 		field.Set(rv)
 		return nil
 	}
-
-	if rv.Type().ConvertibleTo(t) {
-		field.Set(rv.Convert(t))
-		return nil
+	if rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			if isNilAssignableKind(t.Kind()) {
+				field.Set(reflect.Zero(t))
+				return nil
+			}
+			return pkg.ErrUnsupportedType{Type: t}
+		}
+		if unwrapPointer(field, rv) {
+			return nil
+		}
 	}
 
+	if assignExactType(field, rv) {
+		return nil
+	}
+	if assignConvertible(field, rv) {
+		return nil
+	}
 	return typecast.ErrUnsupportedType{Type: t}
+}
+
+func assignExactType(field reflect.Value, v reflect.Value) bool {
+	if v.Type() == field.Type() {
+		field.Set(v)
+		return true
+	}
+	return false
+}
+
+func assignConvertible(field reflect.Value, v reflect.Value) bool {
+	t := field.Type()
+	if v.Type().ConvertibleTo(t) {
+		field.Set(v.Convert(t))
+		return true
+	}
+	return false
+}
+
+func wrapPointer(field reflect.Value, v reflect.Value) bool {
+	t := field.Type()
+	if t.Kind() != reflect.Ptr {
+		return false
+	}
+	elem := t.Elem()
+	if v.Type() == elem {
+		p := reflect.New(elem)
+		p.Elem().Set(v)
+		field.Set(p)
+		return true
+	}
+	if v.Type().ConvertibleTo(elem) {
+		p := reflect.New(elem)
+		p.Elem().Set(v.Convert(elem))
+		field.Set(p)
+		return true
+	}
+	return false
+}
+
+func unwrapPointer(field reflect.Value, v reflect.Value) bool {
+	if v.Kind() == reflect.Ptr {
+		if v.Type().Elem() == field.Type() {
+			field.Set(v.Elem())
+			return true
+		}
+		if v.Elem().Type().ConvertibleTo(field.Type()) {
+			field.Set(v.Elem().Convert(field.Type()))
+			return true
+		}
+	}
+	return false
+}
+
+func unwrapPointerExact(field reflect.Value, v reflect.Value) bool {
+	if v.Kind() == reflect.Ptr && v.Type().Elem() == field.Type() {
+		field.Set(v.Elem())
+		return true
+	}
+	return false
 }
 
 func isNilAssignableKind(k reflect.Kind) bool {
@@ -227,4 +266,178 @@ func isNilAssignableKind(k reflect.Kind) bool {
 	default:
 		return false
 	}
+}
+
+func MakePath(prefix, name string) string {
+	if prefix == "" {
+		return name
+	}
+	return prefix + "." + name
+}
+
+func ConvertToUpperSnake(name string) string {
+	var b strings.Builder
+	b.Grow(len(name))
+	lastUnderscore := false
+	wroteAny := false
+	prevLowerOrDigit := false
+	prevUpper := false
+	runes := []rune(name)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+		if r == '-' || r == ' ' || r == '_' {
+			if !lastUnderscore && wroteAny {
+				b.WriteByte('_')
+				lastUnderscore = true
+			}
+			prevLowerOrDigit = false
+			prevUpper = false
+			continue
+		}
+		isUpper := r >= 'A' && r <= 'Z'
+		isLower := r >= 'a' && r <= 'z'
+		isDigit := r >= '0' && r <= '9'
+		if isUpper {
+			nextLower := false
+			if i+1 < len(runes) {
+				rr := runes[i+1]
+				nextLower = rr >= 'a' && rr <= 'z'
+			}
+			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
+				b.WriteByte('_')
+			}
+			b.WriteRune(r)
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = false
+			prevUpper = true
+			continue
+		}
+		if isLower {
+			b.WriteRune(r - ('a' - 'A'))
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = true
+			prevUpper = false
+			continue
+		}
+		if isDigit {
+			b.WriteRune(r)
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = true
+			prevUpper = false
+			continue
+		}
+		if !lastUnderscore && wroteAny {
+			b.WriteByte('_')
+			lastUnderscore = true
+		}
+		prevLowerOrDigit = false
+		prevUpper = false
+	}
+	s := b.String()
+	if len(s) > 0 && s[len(s)-1] == '_' {
+		s = s[:len(s)-1]
+	}
+	return s
+}
+
+func NormalizeDelimited(input string, delim string) string {
+	if delim == "" {
+		return input
+	}
+	if !strings.Contains(input, delim) {
+		return input
+	}
+	tokens := strings.Split(input, delim)
+	for i := range tokens {
+		tokens[i] = strings.TrimSpace(tokens[i])
+	}
+	return strings.Join(tokens, ",")
+}
+
+func ResolveDelimiter(tagDelimiter string, defaultDelimiter string) string {
+	if tagDelimiter != "" {
+		return tagDelimiter
+	}
+	return defaultDelimiter
+}
+
+func ConvertToEnvVar(name string) string {
+	var builder strings.Builder
+	builder.Grow(len(name))
+
+	lastUnderscore := false
+	wroteAny := false
+	prevLowerOrDigit := false
+	prevUpper := false
+
+	runes := []rune(name)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+
+		if r == '-' || r == ' ' {
+			if !lastUnderscore && wroteAny {
+				builder.WriteByte('_')
+				lastUnderscore = true
+			}
+			prevLowerOrDigit = false
+			prevUpper = false
+			continue
+		}
+
+		isUpper := unicode.IsUpper(r)
+		isLower := unicode.IsLower(r)
+		isDigit := unicode.IsDigit(r)
+
+		if isUpper {
+			nextLower := false
+			if i+1 < len(runes) {
+				rr := runes[i+1]
+				nextLower = unicode.IsLower(rr)
+			}
+			if (prevLowerOrDigit || (prevUpper && nextLower)) && !lastUnderscore && wroteAny {
+				builder.WriteByte('_')
+			}
+			builder.WriteRune(r)
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = false
+			prevUpper = true
+			continue
+		}
+
+		if isLower {
+			builder.WriteRune(unicode.ToUpper(r))
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = true
+			prevUpper = false
+			continue
+		}
+
+		if isDigit {
+			builder.WriteRune(r)
+			lastUnderscore = false
+			wroteAny = true
+			prevLowerOrDigit = true
+			prevUpper = false
+			continue
+		}
+
+		if !lastUnderscore && wroteAny {
+			builder.WriteByte('_')
+			lastUnderscore = true
+		}
+		prevLowerOrDigit = false
+		prevUpper = false
+	}
+
+	s := builder.String()
+	if len(s) > 0 && s[len(s)-1] == '_' {
+		s = s[:len(s)-1]
+	}
+
+	return s
 }

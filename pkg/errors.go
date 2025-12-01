@@ -84,6 +84,11 @@ func NewFlagsFieldFailedError(name string, value string, path string, originalEr
 	return fmt.Errorf("%w: %w", ErrSourceFieldFailed, typedError)
 }
 
+func NewJSONFieldFailedError(path string, originalError error) error {
+	typedError := &SourceFieldFailedError{SourceName: "json", Path: path, OriginalError: originalError}
+	return fmt.Errorf("%w: %w", ErrSourceFieldFailed, typedError)
+}
+
 func (e *SourceFieldFailedError) Error() string {
 	if e.SourceName == "env" {
 		return fmt.Sprintf("env %s=%s field %s: %v", e.Key, e.Value, e.Path, e.OriginalError)
@@ -94,7 +99,10 @@ func (e *SourceFieldFailedError) Error() string {
 		}
 		return fmt.Sprintf("flags %s=%s: %v", e.Key, e.Value, e.OriginalError)
 	}
-	return fmt.Sprintf("dict field %s: %v", e.Path, e.OriginalError)
+	if e.SourceName == "dict" {
+		return fmt.Sprintf("dict field %s: %v", e.Path, e.OriginalError)
+	}
+	return fmt.Sprintf("json field %s: %v", e.Path, e.OriginalError)
 }
 
 func (e *SourceFieldFailedError) Unwrap() error {
