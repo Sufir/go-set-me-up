@@ -17,7 +17,6 @@ jobs:
   tests:
     name: Run tests and publish coverage artifact
     runs-on: ubuntu-latest
-    environment: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,8 +65,9 @@ jobs:
         run: |
           pct="${{ steps.cov.outputs.pct }}"
           color="${{ steps.cov.outputs.color }}"
-          mkdir -p ./.pages
-          cat <<EOF > ./.pages/coverage-badge.json
+          branch="${{ github.ref_name }}"
+          mkdir -p "./.pages/${branch}"
+          cat <<EOF > "./.pages/${branch}/coverage-badge.json"
           {
             "schemaVersion": 1,
             "label": "coverage",
@@ -76,11 +76,16 @@ jobs:
             "cacheSeconds": 60
           }
           EOF
+          mkdir -p ./.pages
+          cp "./.pages/${branch}/coverage-badge.json" "./.pages/coverage-badge.json"
 
       - name: Generate HTML coverage report
         run: |
+          branch="${{ github.ref_name }}"
+          mkdir -p "./.pages/${branch}"
+          go tool cover -html=coverage.out -o "./.pages/${branch}/index.html"
           mkdir -p ./.pages
-          go tool cover -html=coverage.out -o ./.pages/index.html
+          cp "./.pages/${branch}/index.html" "./.pages/index.html"
 
       - name: Upload Pages artifact
         if: >
@@ -91,8 +96,14 @@ jobs:
           name: github-pages
           path: ./.pages
 
+  deploy_coverage:
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
+    needs: tests
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
       - name: Deploy to GitHub Pages
-        if: >
-          github.event_name == 'push' &&
-          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
         uses: actions/deploy-pages@v4

@@ -1,5 +1,5 @@
 # go-set-me-up
-[![Lint](https://github.com/Sufir/go-set-me-up/actions/workflows/lint.yml/badge.svg)](https://github.com/Sufir/go-set-me-up/actions/workflows/lint.yml) [![Coverage](https://img.shields.io/badge/coverage-unknown-lightgrey.svg)](https://github.com/Sufir/go-set-me-up/actions/workflows/coverage.yml)
+[![Lint](https://github.com/Sufir/go-set-me-up/actions/workflows/lint.yml/badge.svg)](https://github.com/Sufir/go-set-me-up/actions/workflows/lint.yml)  [![Coverage main](https://img.shields.io/endpoint?url=https://sufir.github.io/go-set-me-up/main/coverage-badge.json)](https://sufir.github.io/go-set-me-up/main/)
 
 ## Overview
 GoSetUpMe is a small Go library that populates configuration structs from multiple sources in a consistent way. It supports environment variables, CLI flags, in-memory dictionaries, and JSON files. The library includes a type-casting engine that converts string inputs into native Go types and provides two loading modes: override and fill-missing.
