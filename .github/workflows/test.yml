@@ -1,4 +1,4 @@
-name: Tests and Coverage
+name: Run tests
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   tests:
-    name: Run tests and publish coverage artifact
+    name: Run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
