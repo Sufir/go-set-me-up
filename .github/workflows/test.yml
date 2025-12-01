@@ -92,21 +92,8 @@ jobs:
           name: github-pages
           path: ./.pages
 
-  deploy_coverage:
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: No deploy on pull_request
-        if: github.event_name != 'push'
-        run: echo "No deploy on pull_request; job succeeds"
-
-  pages_deploy:
-    if: github.event_name == 'push'
-    needs: [tests, deploy_coverage]
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-    steps:
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
         uses: actions/deploy-pages@v4
+
   
