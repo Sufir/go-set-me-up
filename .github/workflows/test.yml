@@ -2,9 +2,7 @@ name: Tests and Coverage
 
 on:
   push:
-    branches: [main, master, dev]
   pull_request:
-    branches: [main, master, dev]
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
@@ -88,18 +86,14 @@ jobs:
           cp "./.pages/${branch}/index.html" "./.pages/index.html"
 
       - name: Upload Pages artifact
-        if: >
-          github.event_name == 'push' &&
-          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
           path: ./.pages
 
   deploy_coverage:
-    if: >
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev')
+    if: github.event_name == 'push'
     needs: tests
     runs-on: ubuntu-latest
     environment:
