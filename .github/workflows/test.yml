@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COVERAGE_EXCLUDE: |
-        (^|/)test[^/](/|$)
+        (^|/)test[^/]*(/|$)
         (^|/)[^/]test\.go$
     steps:
       - name: Checkout
