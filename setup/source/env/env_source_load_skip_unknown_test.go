@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type SkipConfig struct {
@@ -18,7 +18,7 @@ type UnusedConfig struct {
 }
 
 func TestEnvSource_Load_SkipFieldWithDashTag(t *testing.T) {
-	source := NewSource("app", ",", pkg.ModeOverride)
+	source := NewSource("app", ",", setup.ModeOverride)
 
 	t.Setenv("APP_VALUE", "123")
 

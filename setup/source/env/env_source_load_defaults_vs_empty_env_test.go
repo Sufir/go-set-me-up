@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type DefaultsConflictConfig struct {
@@ -18,7 +18,7 @@ type DefaultsConflictConfig struct {
 }
 
 func TestEnvSource_Load_Override_EmptyEnvWinsOverDefault(t *testing.T) {
-	source := NewSource("app", ",", pkg.ModeOverride)
+	source := NewSource("app", ",", setup.ModeOverride)
 
 	t.Setenv("APP_S", "")
 	t.Setenv("APP_I", "")
@@ -36,7 +36,7 @@ func TestEnvSource_Load_Override_EmptyEnvWinsOverDefault(t *testing.T) {
 }
 
 func TestEnvSource_Load_FillMissing_EmptyEnvWinsOverDefault(t *testing.T) {
-	source := NewSource("app", ",", pkg.ModeFillMissing)
+	source := NewSource("app", ",", setup.ModeFillMissing)
 
 	t.Setenv("APP_S", "")
 	t.Setenv("APP_I", "")
@@ -54,7 +54,7 @@ func TestEnvSource_Load_FillMissing_EmptyEnvWinsOverDefault(t *testing.T) {
 }
 
 func TestEnvSource_Load_DefaultsUsedWhenEnvMissing(t *testing.T) {
-	source := NewSource("app", ",", pkg.ModeOverride)
+	source := NewSource("app", ",", setup.ModeOverride)
 
 	cfg := DefaultsConflictConfig{}
 	err := source.Load(&cfg)

@@ -6,16 +6,16 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
 )
 
 type Source struct {
 	path string
-	mode pkg.LoadMode
+	mode setup.LoadMode
 }
 
-func NewSource(path string, mode pkg.LoadMode) *Source {
+func NewSource(path string, mode setup.LoadMode) *Source {
 	return &Source{path: path, mode: sourceutil.DefaultMode(mode)}
 }
 
@@ -27,24 +27,24 @@ func (source Source) Load(cfg any) error {
 
 	data, readErr := os.ReadFile(source.path)
 	if readErr != nil {
-		return pkg.NewAggregatedLoadFailedError(readErr)
+		return setup.NewAggregatedLoadFailedError(readErr)
 	}
 
 	var root map[string]json.RawMessage
 	if unmarshalErr := json.Unmarshal(data, &root); unmarshalErr != nil {
-		return pkg.NewAggregatedLoadFailedError(unmarshalErr)
+		return setup.NewAggregatedLoadFailedError(unmarshalErr)
 	}
 
 	holder := reflect.New(elem.Type())
 	if err := json.Unmarshal(data, holder.Interface()); err != nil {
-		return pkg.NewAggregatedLoadFailedError(err)
+		return setup.NewAggregatedLoadFailedError(err)
 	}
 	shadow := holder.Elem()
 	source.copyStructValues(elem, shadow, root, source.mode, nil, "")
 	return nil
 }
 
-func (source Source) copyStructValues(dest reflect.Value, shadow reflect.Value, raw map[string]json.RawMessage, mode pkg.LoadMode, _ *[]error, prefix string) {
+func (source Source) copyStructValues(dest reflect.Value, shadow reflect.Value, raw map[string]json.RawMessage, mode setup.LoadMode, _ *[]error, prefix string) {
 	structType := dest.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldInfo := structType.Field(i)

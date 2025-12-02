@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
-	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup/source/testcommon"
 )
 
 func buildEnvKeyFromPath(prefix string, configuration any, path []string) string {
@@ -53,7 +53,7 @@ func buildEnvKeyFromPath(prefix string, configuration any, path []string) string
 	return buildKey(segments, leaf)
 }
 
-func executeEnvScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
+func executeEnvScenario(t *testing.T, configuration any, mode setup.LoadMode, input []testcommon.DataEntry) error {
 	prefix := "app"
 	source := NewSource(prefix, ",", mode)
 	for _, entry := range input {

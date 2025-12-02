@@ -5,29 +5,29 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
 )
 
 type Source struct {
 	dict   map[string]any
-	caster pkg.TypeCaster
-	mode   pkg.LoadMode
+	caster setup.TypeCaster
+	mode   setup.LoadMode
 }
 
-func NewSource(dict map[string]any, mode pkg.LoadMode) *Source {
+func NewSource(dict map[string]any, mode setup.LoadMode) *Source {
 	if dict == nil {
 		dict = map[string]any{}
 	}
-	return &Source{dict: dict, caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode)}
+	return &Source{dict: dict, caster: setup.NewTypeCaster(), mode: sourceutil.DefaultMode(mode)}
 }
 
-func NewSourceWithCaster(dict map[string]any, mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+func NewSourceWithCaster(dict map[string]any, mode setup.LoadMode, caster setup.TypeCaster) *Source {
 	if dict == nil {
 		dict = map[string]any{}
 	}
 	if caster == nil {
-		caster = pkg.NewTypeCaster()
+		caster = setup.NewTypeCaster()
 	}
 	return &Source{dict: dict, caster: caster, mode: sourceutil.DefaultMode(mode)}
 }
@@ -40,12 +40,12 @@ func (source Source) Load(cfg any) error {
 	var errs []error
 	source.loadStruct(e, source.dict, source.mode, &errs, "")
 	if len(errs) > 0 {
-		return pkg.NewAggregatedLoadFailedError(errors.Join(errs...))
+		return setup.NewAggregatedLoadFailedError(errors.Join(errs...))
 	}
 	return nil
 }
 
-func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, mode pkg.LoadMode, errs *[]error, prefix string) {
+func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, mode setup.LoadMode, errs *[]error, prefix string) {
 	t := structValue.Type()
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -75,7 +75,7 @@ func (source Source) loadStruct(structValue reflect.Value, dict map[string]any, 
 			continue
 		}
 		if err := sourceutil.AssignFromAny(source.caster, fv, raw); err != nil {
-			*errs = append(*errs, pkg.NewDictFieldFailedError(sourceutil.MakePath(prefix, f.Name), err))
+			*errs = append(*errs, setup.NewDictFieldFailedError(sourceutil.MakePath(prefix, f.Name), err))
 		}
 	}
 }

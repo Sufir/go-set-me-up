@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type EnvDelimiterConfig struct {
@@ -21,7 +21,7 @@ type EnvTagDelimiterConfig struct {
 }
 
 func TestEnvSource_Delimiter_DefaultFromSource(t *testing.T) {
-	source := NewSource("app", ":", pkg.ModeOverride)
+	source := NewSource("app", ":", setup.ModeOverride)
 	t.Setenv("APP_INTS", "1:2:3")
 	t.Setenv("APP_ARR", "10:20:30")
 	t.Setenv("APP_STRS", "a:b:c")
@@ -34,7 +34,7 @@ func TestEnvSource_Delimiter_DefaultFromSource(t *testing.T) {
 }
 
 func TestEnvSource_Delimiter_TagOverridesSource(t *testing.T) {
-	source := NewSource("app", ":", pkg.ModeOverride)
+	source := NewSource("app", ":", setup.ModeOverride)
 	t.Setenv("APP_INTS", "1;2;3")
 	t.Setenv("APP_STRS", "a|b|c")
 	cfg := &EnvTagDelimiterConfig{}

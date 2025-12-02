@@ -6,14 +6,14 @@ import (
 	"unicode"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 // DefaultMode returns the effective load mode.
 // mode: requested mode; when zero, ModeOverride is used as the default.
-func DefaultMode(mode pkg.LoadMode) pkg.LoadMode {
+func DefaultMode(mode setup.LoadMode) setup.LoadMode {
 	if mode == 0 {
-		return pkg.ModeOverride
+		return setup.ModeOverride
 	}
 
 	return mode
@@ -25,12 +25,12 @@ func DefaultMode(mode pkg.LoadMode) pkg.LoadMode {
 func EnsureTargetStruct(configuration any) (reflect.Value, error) {
 	value := reflect.ValueOf(configuration)
 	if value.Kind() != reflect.Ptr || value.IsNil() {
-		return reflect.Value{}, pkg.NewInvalidTargetError("target must be a non-nil pointer to struct")
+		return reflect.Value{}, setup.NewInvalidTargetError("target must be a non-nil pointer to struct")
 	}
 
 	elem := value.Elem()
 	if elem.Kind() != reflect.Struct {
-		return reflect.Value{}, pkg.NewInvalidTargetError("target must be pointer to struct")
+		return reflect.Value{}, setup.NewInvalidTargetError("target must be pointer to struct")
 	}
 
 	return elem, nil
@@ -42,8 +42,8 @@ func EnsureTargetStruct(configuration any) (reflect.Value, error) {
 // present: whether the source contains a value for the field
 // mode: load mode controlling override/fill semantics
 // defaultValue: non-empty default value used when source does not contain a value
-func ShouldAssign(fieldValue reflect.Value, present bool, mode pkg.LoadMode, defaultValue string) bool {
-	if mode == pkg.ModeOverride {
+func ShouldAssign(fieldValue reflect.Value, present bool, mode setup.LoadMode, defaultValue string) bool {
+	if mode == setup.ModeOverride {
 		if present {
 			return true
 		}
@@ -53,7 +53,7 @@ func ShouldAssign(fieldValue reflect.Value, present bool, mode pkg.LoadMode, def
 		return false
 	}
 
-	if mode == pkg.ModeFillMissing {
+	if mode == setup.ModeFillMissing {
 		if !fieldValue.IsZero() {
 			return false
 		}
@@ -71,7 +71,7 @@ func ShouldAssign(fieldValue reflect.Value, present bool, mode pkg.LoadMode, def
 // caster: TypeCaster used for string-to-type conversion
 // field: destination field to set
 // raw: input string value
-func AssignFromString(caster pkg.TypeCaster, field reflect.Value, raw string) error {
+func AssignFromString(caster setup.TypeCaster, field reflect.Value, raw string) error {
 	t := field.Type()
 	if t.Kind() == reflect.Ptr {
 		v, err := caster.Cast(raw, t.Elem())
@@ -88,7 +88,7 @@ func AssignFromString(caster pkg.TypeCaster, field reflect.Value, raw string) er
 		if wrapPointer(field, v) {
 			return nil
 		}
-		return pkg.ErrUnsupportedType{Type: t}
+		return setup.ErrUnsupportedType{Type: t}
 	}
 
 	v, err := caster.Cast(raw, t)
@@ -104,7 +104,7 @@ func AssignFromString(caster pkg.TypeCaster, field reflect.Value, raw string) er
 	if assignConvertible(field, v) {
 		return nil
 	}
-	return pkg.ErrUnsupportedType{Type: t}
+	return setup.ErrUnsupportedType{Type: t}
 }
 
 // AssignFromAny assigns an arbitrary typed value into the destination field, performing
@@ -113,14 +113,14 @@ func AssignFromString(caster pkg.TypeCaster, field reflect.Value, raw string) er
 // caster: TypeCaster used when converting from string values
 // field: destination field to set
 // raw: input value (may be string, pointer, nil, or concrete type)
-func AssignFromAny(caster pkg.TypeCaster, field reflect.Value, raw any) error {
+func AssignFromAny(caster setup.TypeCaster, field reflect.Value, raw any) error {
 	t := field.Type()
 	if raw == nil {
 		if isNilAssignableKind(t.Kind()) {
 			field.Set(reflect.Zero(t))
 			return nil
 		}
-		return pkg.ErrUnsupportedType{Type: t}
+		return setup.ErrUnsupportedType{Type: t}
 	}
 
 	rv := reflect.ValueOf(raw)
@@ -141,7 +141,7 @@ func AssignFromAny(caster pkg.TypeCaster, field reflect.Value, raw any) error {
 			if wrapPointer(field, v) {
 				return nil
 			}
-			return pkg.ErrUnsupportedType{Type: t}
+			return setup.ErrUnsupportedType{Type: t}
 		}
 		if assignExactType(field, rv) {
 			return nil
@@ -170,7 +170,7 @@ func AssignFromAny(caster pkg.TypeCaster, field reflect.Value, raw any) error {
 		if assignConvertible(field, v) {
 			return nil
 		}
-		return pkg.ErrUnsupportedType{Type: t}
+		return setup.ErrUnsupportedType{Type: t}
 	}
 
 	if rv.Type() == t {
@@ -183,7 +183,7 @@ func AssignFromAny(caster pkg.TypeCaster, field reflect.Value, raw any) error {
 				field.Set(reflect.Zero(t))
 				return nil
 			}
-			return pkg.ErrUnsupportedType{Type: t}
+			return setup.ErrUnsupportedType{Type: t}
 		}
 		if unwrapPointer(field, rv) {
 			return nil

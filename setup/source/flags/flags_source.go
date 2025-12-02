@@ -7,40 +7,40 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
 )
 
 type Source struct {
-	caster    pkg.TypeCaster
+	caster    setup.TypeCaster
 	delimiter string
-	mode      pkg.LoadMode
+	mode      setup.LoadMode
 }
 
-func NewSource(mode pkg.LoadMode) *Source {
-	return &Source{caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: ","}
+func NewSource(mode setup.LoadMode) *Source {
+	return &Source{caster: setup.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: ","}
 }
 
-func NewSourceWithCaster(mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+func NewSourceWithCaster(mode setup.LoadMode, caster setup.TypeCaster) *Source {
 	if caster == nil {
-		caster = pkg.NewTypeCaster()
+		caster = setup.NewTypeCaster()
 	}
 	return &Source{caster: caster, mode: sourceutil.DefaultMode(mode), delimiter: ","}
 }
 
-func NewSourceWithDelimiter(mode pkg.LoadMode, delimiter string) *Source {
+func NewSourceWithDelimiter(mode setup.LoadMode, delimiter string) *Source {
 	if delimiter == "" {
 		delimiter = ","
 	}
-	return &Source{caster: pkg.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: delimiter}
+	return &Source{caster: setup.NewTypeCaster(), mode: sourceutil.DefaultMode(mode), delimiter: delimiter}
 }
 
-func NewSourceWithCasterAndDelimiter(mode pkg.LoadMode, delimiter string, caster pkg.TypeCaster) *Source {
+func NewSourceWithCasterAndDelimiter(mode setup.LoadMode, delimiter string, caster setup.TypeCaster) *Source {
 	if delimiter == "" {
 		delimiter = ","
 	}
 	if caster == nil {
-		caster = pkg.NewTypeCaster()
+		caster = setup.NewTypeCaster()
 	}
 	return &Source{caster: caster, mode: sourceutil.DefaultMode(mode), delimiter: delimiter}
 }
@@ -55,7 +55,7 @@ func (source Source) Load(cfg any) error {
 	var collected []error
 	source.loadStruct(elem, argsMap, source.mode, &collected)
 	if len(collected) > 0 {
-		return pkg.NewAggregatedLoadFailedError(errors.Join(collected...))
+		return setup.NewAggregatedLoadFailedError(errors.Join(collected...))
 	}
 	return nil
 }
@@ -125,7 +125,7 @@ func parseArguments(args []string) map[string]string {
 	return result
 }
 
-func (source Source) loadStruct(structValue reflect.Value, args map[string]string, mode pkg.LoadMode, errs *[]error) {
+func (source Source) loadStruct(structValue reflect.Value, args map[string]string, mode setup.LoadMode, errs *[]error) {
 	structType := structValue.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldInfo := structType.Field(i)
@@ -151,7 +151,7 @@ func (source Source) loadStruct(structValue reflect.Value, args map[string]strin
 	}
 }
 
-func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, args map[string]string, mode pkg.LoadMode, errs *[]error) bool {
+func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, args map[string]string, mode setup.LoadMode, errs *[]error) bool {
 	tagFlag := fieldInfo.Tag.Get("flag")
 	if tagFlag == "" || tagFlag == "-" {
 		return false
@@ -182,7 +182,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 				if usedShort {
 					name = tagShort
 				}
-				parseErr := pkg.ErrParseFailed{Type: t, Value: raw, Cause: pkg.ErrEmptyValue}
+				parseErr := setup.ErrParseFailed{Type: t, Value: raw, Cause: setup.ErrEmptyValue}
 				*errs = append(*errs, fmt.Errorf("%s=%s: %w", name, raw, parseErr))
 				return true
 			}
@@ -210,7 +210,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 			name = tagShort
 		}
 		path := fieldInfo.Name
-		*errs = append(*errs, pkg.NewFlagsFieldFailedError(name, raw, path, err))
+		*errs = append(*errs, setup.NewFlagsFieldFailedError(name, raw, path, err))
 	}
 	return true
 }

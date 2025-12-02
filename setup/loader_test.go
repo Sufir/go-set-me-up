@@ -1,4 +1,4 @@
-package pkg_test
+package setup_test
 
 import (
 	"errors"
@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	pkg "github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/dict"
-	"github.com/Sufir/go-set-me-up/pkg/source/env"
-	"github.com/Sufir/go-set-me-up/pkg/source/flags"
-	jsonfile "github.com/Sufir/go-set-me-up/pkg/source/json-file"
-	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
+	pkg "github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/dict"
+	"github.com/Sufir/go-set-me-up/setup/source/env"
+	"github.com/Sufir/go-set-me-up/setup/source/flags"
+	jsonfile "github.com/Sufir/go-set-me-up/setup/source/json-file"
+	"github.com/Sufir/go-set-me-up/setup/source/testcommon"
 )
 
 func TestLoader_EnvSource_DefaultModeOverride_AssignsValues(t *testing.T) {

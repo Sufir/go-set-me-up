@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type DataEntry struct {
@@ -25,10 +25,10 @@ type Scenario struct {
 	AssertError  func(*testing.T, error)
 	Name         string
 	Input        []DataEntry
-	Mode         pkg.LoadMode
+	Mode         setup.LoadMode
 }
 
-func RunScenario(t *testing.T, scenario Scenario, executeFunction func(*testing.T, any, pkg.LoadMode, []DataEntry) error) {
+func RunScenario(t *testing.T, scenario Scenario, executeFunction func(*testing.T, any, setup.LoadMode, []DataEntry) error) {
 	configuration := scenario.CreateConfig()
 	if scenario.PreInit != nil {
 		scenario.PreInit(configuration)
@@ -136,7 +136,7 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Basic_Primitives_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &BasicTypesConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"Port"}, Value: "8080"},
@@ -152,7 +152,7 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 		},
 		{
 			Name:         "Float_And_Complex_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"FloatValue"}, Value: "3.5"},
@@ -166,7 +166,7 @@ func BuildBasicPrimitivesScenarios() []Scenario {
 		},
 		{
 			Name:         "Boolean_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"BoolValue"}, Value: " true "},
@@ -183,7 +183,7 @@ func BuildPointerLeafScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Pointer_Int_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &PointerConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"NumberPointer"}, Value: "42"},
@@ -196,7 +196,7 @@ func BuildPointerLeafScenarios() []Scenario {
 		},
 		{
 			Name:         "Pointer_Field_In_Cast_Configuration",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"IntPointer"}, Value: "100"},
@@ -214,7 +214,7 @@ func BuildBytesScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Bytes_Slice_And_Array_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"ByteSlice"}, Value: " a b "},
@@ -233,7 +233,7 @@ func BuildNestedValueScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Nested_Value_Structs",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &RootNested{} },
 			Input: []DataEntry{
 				{Path: []string{"Outer", "Inner", "Value"}, Value: "123"},
@@ -250,7 +250,7 @@ func BuildNestedPointerScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Nested_Pointer_Structs",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &PRootNested{} },
 			Input: []DataEntry{
 				{Path: []string{"Outer", "Inner", "Value"}, Value: "321"},
@@ -269,7 +269,7 @@ func BuildModeScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Mode_Override_Replaces_Values",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
 			PreInit: func(configuration any) {
 				configurationTyped := configuration.(*ModeBehaviorConfiguration)
@@ -289,7 +289,7 @@ func BuildModeScenarios() []Scenario {
 		},
 		{
 			Name:         "Mode_FillMissing_Does_Not_Override_NonZero",
-			Mode:         pkg.ModeFillMissing,
+			Mode:         setup.ModeFillMissing,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
 			PreInit: func(configuration any) {
 				configurationTyped := configuration.(*ModeBehaviorConfiguration)
@@ -309,7 +309,7 @@ func BuildModeScenarios() []Scenario {
 		},
 		{
 			Name:         "Mode_FillMissing_Fills_Zero_Values",
-			Mode:         pkg.ModeFillMissing,
+			Mode:         setup.ModeFillMissing,
 			CreateConfig: func() any { return &ModeBehaviorConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "10"},
@@ -345,7 +345,7 @@ func BuildAggregatedErrorScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Aggregated_Errors_Multiple_Fields",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &AggregationConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"A"}, Value: "x"},
@@ -369,7 +369,7 @@ func BuildUnknownKeysScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Unknown_Keys_Ignored",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &BasicTypesConfiguration{} },
 			Input:        []DataEntry{},
 			AssertResult: func(t *testing.T, configuration any) {
@@ -386,7 +386,7 @@ func BuildEmptyValuesScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Empty_Values_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &EmptyValuesConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"I"}, Value: ""},
@@ -410,7 +410,7 @@ func BuildTextUnmarshalerScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Text_Unmarshaler_Value_And_Pointer",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &TextUnmarshalerConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"ValueType"}, Value: "100"},
@@ -430,7 +430,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 	return []Scenario{
 		{
 			Name:         "Invalid_Int_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"IntValue"}, Value: "x"},
@@ -446,7 +446,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 		},
 		{
 			Name:         "Invalid_Bool_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"BoolValue"}, Value: "yes"},
@@ -462,7 +462,7 @@ func BuildInvalidPrimitiveCastScenarios() []Scenario {
 		},
 		{
 			Name:         "Invalid_Complex_From_String",
-			Mode:         pkg.ModeOverride,
+			Mode:         setup.ModeOverride,
 			CreateConfig: func() any { return &CastConfiguration{} },
 			Input: []DataEntry{
 				{Path: []string{"ComplexValue"}, Value: "x+yi"},
