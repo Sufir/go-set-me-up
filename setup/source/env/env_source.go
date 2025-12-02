@@ -6,18 +6,18 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
 )
 
 type Source struct {
-	caster    pkg.TypeCaster
+	caster    setup.TypeCaster
 	prefix    string
 	delimiter string
-	mode      pkg.LoadMode
+	mode      setup.LoadMode
 }
 
-func NewSource(prefix string, delimiter string, mode pkg.LoadMode) *Source {
+func NewSource(prefix string, delimiter string, mode setup.LoadMode) *Source {
 	normalized := ""
 	if prefix != "" {
 		normalized = sourceutil.ConvertToEnvVar(prefix)
@@ -30,12 +30,12 @@ func NewSource(prefix string, delimiter string, mode pkg.LoadMode) *Source {
 	return &Source{
 		prefix:    normalized,
 		delimiter: delimiter,
-		caster:    pkg.NewTypeCaster(),
+		caster:    setup.NewTypeCaster(),
 		mode:      sourceutil.DefaultMode(mode),
 	}
 }
 
-func NewSourceWithCaster(prefix string, delimiter string, mode pkg.LoadMode, caster pkg.TypeCaster) *Source {
+func NewSourceWithCaster(prefix string, delimiter string, mode setup.LoadMode, caster setup.TypeCaster) *Source {
 	normalized := ""
 	if prefix != "" {
 		normalized = sourceutil.ConvertToEnvVar(prefix)
@@ -44,7 +44,7 @@ func NewSourceWithCaster(prefix string, delimiter string, mode pkg.LoadMode, cas
 		delimiter = ","
 	}
 	if caster == nil {
-		caster = pkg.NewTypeCaster()
+		caster = setup.NewTypeCaster()
 	}
 	return &Source{
 		prefix:    normalized,
@@ -70,7 +70,7 @@ func (source Source) Load(cfg any) error {
 	source.loadStruct(elem, segments, environment, source.mode, &collected, "")
 
 	if len(collected) > 0 {
-		return pkg.NewAggregatedLoadFailedError(errors.Join(collected...))
+		return setup.NewAggregatedLoadFailedError(errors.Join(collected...))
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func getEnv() map[string]string {
 	return result
 }
 
-func (source Source) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error, prefix string) {
+func (source Source) loadStruct(structValue reflect.Value, segments []string, env map[string]string, mode setup.LoadMode, errs *[]error, prefix string) {
 	structType := structValue.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldInfo := structType.Field(i)
@@ -151,7 +151,7 @@ func (source Source) resolveNestedStruct(fieldValue reflect.Value, fieldInfo ref
 	}
 }
 
-func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode pkg.LoadMode, errs *[]error, prefix string) bool {
+func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflect.StructField, segments []string, env map[string]string, mode setup.LoadMode, errs *[]error, prefix string) bool {
 	tagEnv := fieldInfo.Tag.Get("env")
 	if tagEnv == "" {
 		return false
@@ -185,7 +185,7 @@ func (source Source) processLeafField(fieldValue reflect.Value, fieldInfo reflec
 	}
 	if err := sourceutil.AssignFromString(source.caster, fieldValue, setValue); err != nil {
 		path := sourceutil.MakePath(prefix, fieldInfo.Name)
-		*errs = append(*errs, pkg.NewEnvFieldFailedError(key, setValue, path, err))
+		*errs = append(*errs, setup.NewEnvFieldFailedError(key, setValue, path, err))
 	}
 	return true
 }

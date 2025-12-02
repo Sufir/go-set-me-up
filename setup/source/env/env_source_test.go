@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/sourceutil"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/sourceutil"
 )
 
 func TestConvertToEnvironmentVariableName(t *testing.T) {
@@ -59,20 +59,20 @@ func TestNormalizeDelimited(t *testing.T) {
 func TestShouldSetField(t *testing.T) {
 	var x int
 	vx := reflect.ValueOf(&x).Elem()
-	assert.True(t, sourceutil.ShouldAssign(vx, true, pkg.ModeOverride, ""))
-	assert.True(t, sourceutil.ShouldAssign(vx, false, pkg.ModeOverride, "10"))
-	assert.False(t, sourceutil.ShouldAssign(vx, false, pkg.ModeOverride, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, true, setup.ModeOverride, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, false, setup.ModeOverride, "10"))
+	assert.False(t, sourceutil.ShouldAssign(vx, false, setup.ModeOverride, ""))
 	x = 5
 	vx = reflect.ValueOf(&x).Elem()
-	assert.False(t, sourceutil.ShouldAssign(vx, true, pkg.ModeFillMissing, ""))
+	assert.False(t, sourceutil.ShouldAssign(vx, true, setup.ModeFillMissing, ""))
 	x = 0
 	vx = reflect.ValueOf(&x).Elem()
-	assert.True(t, sourceutil.ShouldAssign(vx, true, pkg.ModeFillMissing, ""))
-	assert.True(t, sourceutil.ShouldAssign(vx, false, pkg.ModeFillMissing, "7"))
+	assert.True(t, sourceutil.ShouldAssign(vx, true, setup.ModeFillMissing, ""))
+	assert.True(t, sourceutil.ShouldAssign(vx, false, setup.ModeFillMissing, "7"))
 }
 
 func TestSetFieldValue(t *testing.T) {
-	source := NewSource("app", ",", pkg.ModeOverride)
+	source := NewSource("app", ",", setup.ModeOverride)
 	type Holder struct {
 		IntSlice          []int `envDelim:":"`
 		ByteSlice         []byte
@@ -123,7 +123,7 @@ func TestGetEnv_ReadsSetVariables(t *testing.T) {
 }
 
 func TestLoadStruct_SetsOnlyTaggedFields(t *testing.T) {
-	source := NewSource("APP", ",", pkg.ModeOverride)
+	source := NewSource("APP", ",", setup.ModeOverride)
 	type Sub struct {
 		Value int `env:"VALUE"`
 	}
@@ -139,7 +139,7 @@ func TestLoadStruct_SetsOnlyTaggedFields(t *testing.T) {
 		"APP_NOT_USED":  "9",
 	}
 	var errs []error
-	source.loadStruct(reflect.ValueOf(&r).Elem(), []string{"APP"}, env, pkg.ModeOverride, &errs, "")
+	source.loadStruct(reflect.ValueOf(&r).Elem(), []string{"APP"}, env, setup.ModeOverride, &errs, "")
 	require.Empty(t, errs)
 	assert.Equal(t, 123, r.Sub.Value)
 	assert.Equal(t, 0, r.Skip)

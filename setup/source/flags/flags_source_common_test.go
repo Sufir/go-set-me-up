@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/testcommon"
 )
 
-func executeFlagsScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
+func executeFlagsScenario(t *testing.T, configuration any, mode setup.LoadMode, input []testcommon.DataEntry) error {
 	t.Helper()
 	args := []string{"app"}
 	for _, entry := range input {

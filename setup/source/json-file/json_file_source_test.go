@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/testcommon"
 )
 
 func writeJSONFile(t *testing.T, data any) string {
@@ -120,7 +120,7 @@ func buildJSONMapFromInput(configuration any, input []testcommon.DataEntry) map[
 	return root
 }
 
-func executeJSONScenario(t *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
+func executeJSONScenario(t *testing.T, configuration any, mode setup.LoadMode, input []testcommon.DataEntry) error {
 	root := buildJSONMapFromInput(configuration, input)
 	path := writeJSONFile(t, root)
 	source := NewSource(path, mode)
@@ -133,7 +133,7 @@ func TestJSON_BasicPrimitives(t *testing.T) {
 		Port  int    `json:"Port"`
 		Debug bool   `json:"Debug"`
 	}
-	err := executeJSONScenario(t, func() any { return &C{} }(), pkg.ModeOverride, []testcommon.DataEntry{
+	err := executeJSONScenario(t, func() any { return &C{} }(), setup.ModeOverride, []testcommon.DataEntry{
 		{Path: []string{"Port"}, Value: "8080"},
 		{Path: []string{"Debug"}, Value: "true"},
 		{Path: []string{"Name"}, Value: "  hello  "},
@@ -148,7 +148,7 @@ func TestJSON_PointerLeaf(t *testing.T) {
 	root := map[string]any{"int_pointer": 100}
 	path := writeJSONFile(t, root)
 	cfg := &C{}
-	err := NewSource(path, pkg.ModeOverride).Load(cfg)
+	err := NewSource(path, setup.ModeOverride).Load(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.IntPointer)
 	assert.Equal(t, 100, *cfg.IntPointer)
@@ -166,7 +166,7 @@ func TestJSON_Bytes(t *testing.T) {
 	}
 	path := writeJSONFile(t, root)
 	cfg := &C{}
-	err := NewSource(path, pkg.ModeOverride).Load(cfg)
+	err := NewSource(path, setup.ModeOverride).Load(cfg)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(" a b "), cfg.ByteSlice)
 	assert.Equal(t, [5]byte{'a', 'b', 'c', 0, 0}, cfg.ByteArray)
@@ -183,7 +183,7 @@ func TestJSON_NestedValue(t *testing.T) {
 		Outer Outer `json:"Outer"`
 	}
 	cfg := &Root{}
-	err := executeJSONScenario(t, cfg, pkg.ModeOverride, []testcommon.DataEntry{{Path: []string{"Outer", "Inner", "Value"}, Value: "123"}})
+	err := executeJSONScenario(t, cfg, setup.ModeOverride, []testcommon.DataEntry{{Path: []string{"Outer", "Inner", "Value"}, Value: "123"}})
 	require.NoError(t, err)
 	assert.Equal(t, 123, cfg.Outer.Inner.Value)
 }
@@ -199,7 +199,7 @@ func TestJSON_NestedPointer(t *testing.T) {
 		Outer *Outer `json:"Outer"`
 	}
 	cfg := &Root{}
-	err := executeJSONScenario(t, cfg, pkg.ModeOverride, []testcommon.DataEntry{{Path: []string{"Outer", "Inner", "Value"}, Value: "321"}})
+	err := executeJSONScenario(t, cfg, setup.ModeOverride, []testcommon.DataEntry{{Path: []string{"Outer", "Inner", "Value"}, Value: "321"}})
 	require.NoError(t, err)
 	require.NotNil(t, cfg.Outer)
 	require.NotNil(t, cfg.Outer.Inner)
@@ -212,19 +212,19 @@ func TestJSON_Mode(t *testing.T) {
 		A int  `json:"A"`
 	}
 	cfg := &C{A: 5, B: func(x int) *int { return &x }(7)}
-	require.NoError(t, executeJSONScenario(t, cfg, pkg.ModeOverride, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
+	require.NoError(t, executeJSONScenario(t, cfg, setup.ModeOverride, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
 	require.NotNil(t, cfg.B)
 	assert.Equal(t, 10, cfg.A)
 	assert.Equal(t, 20, *cfg.B)
 
 	cfg2 := &C{A: 5, B: func(x int) *int { return &x }(7)}
-	require.NoError(t, executeJSONScenario(t, cfg2, pkg.ModeFillMissing, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
+	require.NoError(t, executeJSONScenario(t, cfg2, setup.ModeFillMissing, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
 	require.NotNil(t, cfg2.B)
 	assert.Equal(t, 5, cfg2.A)
 	assert.Equal(t, 7, *cfg2.B)
 
 	cfg3 := &C{}
-	require.NoError(t, executeJSONScenario(t, cfg3, pkg.ModeFillMissing, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
+	require.NoError(t, executeJSONScenario(t, cfg3, setup.ModeFillMissing, []testcommon.DataEntry{{Path: []string{"A"}, Value: "10"}, {Path: []string{"B"}, Value: "20"}}))
 	require.NotNil(t, cfg3.B)
 	assert.Equal(t, 10, cfg3.A)
 	assert.Equal(t, 20, *cfg3.B)
@@ -249,7 +249,7 @@ func TestJSON_AggregatedErrors(t *testing.T) {
 	}
 	path := writeJSONFile(t, root)
 	cfg := &Root{}
-	err := NewSource(path, pkg.ModeOverride).Load(cfg)
+	err := NewSource(path, setup.ModeOverride).Load(cfg)
 	require.Error(t, err)
 }
 
@@ -260,7 +260,7 @@ func TestJSON_UnknownKeysIgnored(t *testing.T) {
 		Debug bool   `json:"Debug"`
 	}
 	cfg4 := &C{}
-	require.NoError(t, executeJSONScenario(t, cfg4, pkg.ModeOverride, []testcommon.DataEntry{}))
+	require.NoError(t, executeJSONScenario(t, cfg4, setup.ModeOverride, []testcommon.DataEntry{}))
 	assert.Equal(t, 0, cfg4.Port)
 	assert.Equal(t, false, cfg4.Debug)
 	assert.Equal(t, "", cfg4.Name)

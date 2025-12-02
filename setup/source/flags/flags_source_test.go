@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type Example struct {
@@ -28,7 +28,7 @@ func TestFlagsSource_Primitives_Short_And_BoolForms(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := ExampleConfig{}
-	source := NewSource(pkg.ModeOverride)
+	source := NewSource(setup.ModeOverride)
 	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, 12, cfg.Sub.Value)
@@ -49,7 +49,7 @@ func TestFlagsSource_Default_And_ModeFillMissing(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := ModeConfig{}
-	source := NewSource(pkg.ModeOverride)
+	source := NewSource(setup.ModeOverride)
 	err := source.Load(&cfg)
 	require.NoError(t, err)
 	require.NotNil(t, cfg.B)
@@ -60,7 +60,7 @@ func TestFlagsSource_Default_And_ModeFillMissing(t *testing.T) {
 	x := 7
 	cfg2.B = &x
 	os.Args = append([]string{"app"}, "--a", "30", "--b", "40")
-	source = NewSource(pkg.ModeFillMissing)
+	source = NewSource(setup.ModeFillMissing)
 	err = source.Load(&cfg2)
 	require.NoError(t, err)
 	require.NotNil(t, cfg2.B)
@@ -79,7 +79,7 @@ func TestFlagsSource_ByteSlice_And_Array(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	cfg := CastConfig{}
-	source := NewSource(pkg.ModeOverride)
+	source := NewSource(setup.ModeOverride)
 	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(" a b "), cfg.ByteSlice)
@@ -95,7 +95,7 @@ func TestFlagsSource_BoolExplicitFalse(t *testing.T) {
 		Debug bool `flag:"debug"`
 	}
 	cfg := BoolConfig{}
-	source := NewSource(pkg.ModeOverride)
+	source := NewSource(setup.ModeOverride)
 	err := source.Load(&cfg)
 	require.NoError(t, err)
 	assert.Equal(t, false, cfg.Debug)

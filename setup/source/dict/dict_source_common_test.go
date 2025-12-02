@@ -3,8 +3,8 @@ package dict
 import (
 	"testing"
 
-	"github.com/Sufir/go-set-me-up/pkg"
-	"github.com/Sufir/go-set-me-up/pkg/source/testcommon"
+	"github.com/Sufir/go-set-me-up/setup"
+	"github.com/Sufir/go-set-me-up/setup/source/testcommon"
 )
 
 func buildDictMapFromInput(input []testcommon.DataEntry) map[string]any {
@@ -26,7 +26,7 @@ func buildDictMapFromInput(input []testcommon.DataEntry) map[string]any {
 	return root
 }
 
-func executeDictScenario(_ *testing.T, configuration any, mode pkg.LoadMode, input []testcommon.DataEntry) error {
+func executeDictScenario(_ *testing.T, configuration any, mode setup.LoadMode, input []testcommon.DataEntry) error {
 	inputMap := buildDictMapFromInput(input)
 	inputMap["UNUSED"] = "42"
 	source := NewSource(inputMap, mode)

@@ -7,7 +7,7 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
-      - gomodcache:/go/pkg/mod
+      - gomodcache:/go/setup/mod
       - gocache:/root/.cache/go-build
     command: sleep infinity
     restart: unless-stopped

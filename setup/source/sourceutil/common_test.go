@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Sufir/go-set-me-up/internal/typecast"
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 type MyTextUnmarshaler struct {
@@ -33,12 +33,12 @@ func (unmarshaler *MyTextUnmarshaler) UnmarshalText(text []byte) error {
 func TestDefaultMode(t *testing.T) {
 	testCases := []struct {
 		name     string
-		input    pkg.LoadMode
-		expected pkg.LoadMode
+		input    setup.LoadMode
+		expected setup.LoadMode
 	}{
-		{name: "Zero_Defaults_To_Override", input: 0, expected: pkg.ModeOverride},
-		{name: "Override_Preserved", input: pkg.ModeOverride, expected: pkg.ModeOverride},
-		{name: "FillMissing_Preserved", input: pkg.ModeFillMissing, expected: pkg.ModeFillMissing},
+		{name: "Zero_Defaults_To_Override", input: 0, expected: setup.ModeOverride},
+		{name: "Override_Preserved", input: setup.ModeOverride, expected: setup.ModeOverride},
+		{name: "FillMissing_Preserved", input: setup.ModeFillMissing, expected: setup.ModeFillMissing},
 	}
 
 	for _, testCase := range testCases {
@@ -71,8 +71,8 @@ func TestEnsureTargetStruct(t *testing.T) {
 			value, err := EnsureTargetStruct(testCase.configuration)
 			if testCase.expectError {
 				require.Error(t, err)
-				assert.True(t, errors.Is(err, pkg.ErrInvalidTarget))
-				var invalidTargetError *pkg.InvalidTargetError
+				assert.True(t, errors.Is(err, setup.ErrInvalidTarget))
+				var invalidTargetError *setup.InvalidTargetError
 				require.True(t, errors.As(err, &invalidTargetError))
 				assert.Equal(t, testCase.expectedReason, invalidTargetError.Reason)
 				return
@@ -90,18 +90,18 @@ func TestShouldAssign(t *testing.T) {
 		name         string
 		defaultValue string
 		initialValue int
-		mode         pkg.LoadMode
+		mode         setup.LoadMode
 		present      bool
 		expected     bool
 	}{
-		{name: "Override_Present", initialValue: 0, present: true, mode: pkg.ModeOverride, defaultValue: "", expected: true},
-		{name: "Override_NotPresent_NoDefault_Zero", initialValue: 0, present: false, mode: pkg.ModeOverride, defaultValue: "", expected: false},
-		{name: "Override_NotPresent_WithDefault_Zero", initialValue: 0, present: false, mode: pkg.ModeOverride, defaultValue: "10", expected: true},
-		{name: "Override_NotPresent_WithDefault_NonZero", initialValue: 5, present: false, mode: pkg.ModeOverride, defaultValue: "10", expected: false},
-		{name: "FillMissing_NonZero", initialValue: 5, present: true, mode: pkg.ModeFillMissing, defaultValue: "", expected: false},
-		{name: "FillMissing_Zero_Present", initialValue: 0, present: true, mode: pkg.ModeFillMissing, defaultValue: "", expected: true},
-		{name: "FillMissing_Zero_Default", initialValue: 0, present: false, mode: pkg.ModeFillMissing, defaultValue: "7", expected: true},
-		{name: "UnknownMode", initialValue: 0, present: true, mode: pkg.LoadMode(100), defaultValue: "", expected: false},
+		{name: "Override_Present", initialValue: 0, present: true, mode: setup.ModeOverride, defaultValue: "", expected: true},
+		{name: "Override_NotPresent_NoDefault_Zero", initialValue: 0, present: false, mode: setup.ModeOverride, defaultValue: "", expected: false},
+		{name: "Override_NotPresent_WithDefault_Zero", initialValue: 0, present: false, mode: setup.ModeOverride, defaultValue: "10", expected: true},
+		{name: "Override_NotPresent_WithDefault_NonZero", initialValue: 5, present: false, mode: setup.ModeOverride, defaultValue: "10", expected: false},
+		{name: "FillMissing_NonZero", initialValue: 5, present: true, mode: setup.ModeFillMissing, defaultValue: "", expected: false},
+		{name: "FillMissing_Zero_Present", initialValue: 0, present: true, mode: setup.ModeFillMissing, defaultValue: "", expected: true},
+		{name: "FillMissing_Zero_Default", initialValue: 0, present: false, mode: setup.ModeFillMissing, defaultValue: "7", expected: true},
+		{name: "UnknownMode", initialValue: 0, present: true, mode: setup.LoadMode(100), defaultValue: "", expected: false},
 	}
 
 	for _, testCase := range testCases {

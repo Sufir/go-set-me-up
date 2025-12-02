@@ -73,7 +73,7 @@ package main
 
 import (
     "github.com/Sufir/go-set-me-up/pkg"
-    jsonfile "github.com/Sufir/go-set-me-up/pkg/source/json-file"
+    jsonfile "github.com/Sufir/go-set-me-up/setup/source/json-file"
     "github.com/Sufir/go-set-me-up/pkg/source/dict"
     "github.com/Sufir/go-set-me-up/pkg/source/env"
     "github.com/Sufir/go-set-me-up/pkg/source/flags"

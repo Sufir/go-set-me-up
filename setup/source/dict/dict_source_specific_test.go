@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Sufir/go-set-me-up/pkg"
+	"github.com/Sufir/go-set-me-up/setup"
 )
 
 func intPointer(v int) *int {
@@ -32,7 +32,7 @@ func TestDictSource_KeyResolution_Table(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			source := NewSource(tc.input, pkg.ModeOverride)
+			source := NewSource(tc.input, setup.ModeOverride)
 			cfg := KeyResolutionConfig{}
 			err := source.Load(&cfg)
 			require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestDictSource_Collections_StringParsing_Supported(t *testing.T) {
 	sourceGood := NewSource(map[string]any{
 		"Ints":  []int{1, 2, 3},
 		"Bytes": "xyz",
-	}, pkg.ModeOverride)
+	}, setup.ModeOverride)
 	cfgGood := CollectionsConfig{}
 	err := sourceGood.Load(&cfgGood)
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestDictSource_Collections_StringParsing_Supported(t *testing.T) {
 
 	sourceParsed := NewSource(map[string]any{
 		"Ints": "1,2,3",
-	}, pkg.ModeOverride)
+	}, setup.ModeOverride)
 	cfgParsed := CollectionsConfig{}
 	err = sourceParsed.Load(&cfgParsed)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestDictSource_ConvertibleNumericTypes(t *testing.T) {
 		"I": float64(3.5),
 		"U": int64(7),
 		"F": int32(2),
-	}, pkg.ModeOverride)
+	}, setup.ModeOverride)
 	cfg := ConvertibleConfig{}
 	err := source.Load(&cfg)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ type NilAssignConfig struct {
 }
 
 func TestDictSource_NilAssignments(t *testing.T) {
-	sourceOverride := NewSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil}, pkg.ModeOverride)
+	sourceOverride := NewSource(map[string]any{"SP": nil, "MP": nil, "VP": nil, "PP": nil}, setup.ModeOverride)
 	cfgOverride := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, VP: 5, PP: intPointer(1)}
 	err := sourceOverride.Load(&cfgOverride)
 	require.Error(t, err)
@@ -101,7 +101,7 @@ func TestDictSource_NilAssignments(t *testing.T) {
 	assert.Nil(t, cfgOverride.MP)
 	assert.Nil(t, cfgOverride.PP)
 
-	sourceFill := NewSource(map[string]any{"SP": nil, "MP": nil, "PP": nil}, pkg.ModeFillMissing)
+	sourceFill := NewSource(map[string]any{"SP": nil, "MP": nil, "PP": nil}, setup.ModeFillMissing)
 	cfgFill := NilAssignConfig{SP: []int{1}, MP: map[string]int{"x": 1}, PP: intPointer(2)}
 	err = sourceFill.Load(&cfgFill)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestDictSource_NilAssignments(t *testing.T) {
 }
 
 func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
-	source := NewSource(map[string]any{"X": nil}, pkg.ModeOverride)
+	source := NewSource(map[string]any{"X": nil}, setup.ModeOverride)
 	type Simple struct{ X int }
 	cfg := Simple{}
 	err := source.Load(&cfg)
@@ -120,7 +120,7 @@ func TestDictSource_NilForNonNilType_IsErrorWithFieldInfo(t *testing.T) {
 }
 
 func TestDictSource_MapToStruct_NonStructField_Ignored(t *testing.T) {
-	source := NewSource(map[string]any{"X": map[string]any{"A": 1}}, pkg.ModeOverride)
+	source := NewSource(map[string]any{"X": map[string]any{"A": 1}}, setup.ModeOverride)
 	type Simple struct{ X int }
 	cfg := Simple{}
 	err := source.Load(&cfg)
@@ -138,7 +138,7 @@ func TestDictSource_PointerAutoWrapUnwrap(t *testing.T) {
 	source := NewSource(map[string]any{
 		"IntValue":   p,
 		"IntPointer": 88,
-	}, pkg.ModeOverride)
+	}, setup.ModeOverride)
 	cfg := PointerMixConfig{}
 	err := source.Load(&cfg)
 	require.NoError(t, err)
